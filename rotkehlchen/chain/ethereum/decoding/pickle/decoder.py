@@ -1,4 +1,4 @@
-from typing import List
+from typing import Any, Dict, List, Tuple
 
 from rotkehlchen.accounting.structures import (
     HistoryBaseEntry,
@@ -6,12 +6,13 @@ from rotkehlchen.accounting.structures import (
     HistoryEventType,
 )
 from rotkehlchen.assets.asset import EthereumToken
+from rotkehlchen.chain.ethereum.decoding.interfaces import DecoderInterface
 from rotkehlchen.chain.ethereum.decoding.pickle.constants import PICKLE_CONTRACTS
 from rotkehlchen.chain.ethereum.decoding.structures import ActionItem
 from rotkehlchen.chain.ethereum.structures import EthereumTxReceiptLog
 from rotkehlchen.chain.ethereum.utils import asset_normalized_value
 from rotkehlchen.constants.ethereum import ZERO_ADDRESS
-from rotkehlchen.types import EthereumTransaction
+from rotkehlchen.types import ChecksumEthAddress, EthereumTransaction
 from rotkehlchen.utils.misc import hex_or_bytes_to_address, hex_or_bytes_to_int
 
 
@@ -91,3 +92,8 @@ def maybe_enrich_pickle_transfers(
             event.notes = f'Unstake {event.balance.amount} {event.asset.symbol} from the pickle contract'  # noqa: E501
 
     return True
+
+
+class PickleDecoder(DecoderInterface):  # lgtm[py/missing-call-to-init]
+    def addresses_to_decoders(self) -> Dict[ChecksumEthAddress, Tuple[Any, ...]]:
+        return {}
