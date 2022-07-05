@@ -135,12 +135,15 @@ class AsyncIgnoreCacheQueryArgumentSchema(AsyncQueryArgumentSchema):
     ignore_cache = fields.Boolean(load_default=False)
 
 
-class AsyncHistoricalQuerySchema(AsyncQueryArgumentSchema):
-    """A schema for getters that have 2 arguments.
-    One to enable async querying and another to force reset DB data by querying everytying again"""
-    reset_db_data = fields.Boolean(load_default=False)
+class AsyncTimerangeQuerySchema(AsyncQueryArgumentSchema):
     from_timestamp = TimestampField(load_default=Timestamp(0))
     to_timestamp = TimestampField(load_default=ts_now)
+
+
+class AsyncHistoricalQuerySchema(AsyncTimerangeQuerySchema):
+    """A schema for getters that have 2 arguments and a time range.
+    One to enable async querying and another to force reset DB data by querying everything again"""
+    reset_db_data = fields.Boolean(load_default=False)
 
 
 class BalanceSchema(Schema):

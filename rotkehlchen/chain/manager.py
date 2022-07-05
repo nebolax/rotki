@@ -48,6 +48,7 @@ from rotkehlchen.chain.ethereum.modules import (
     YearnVaults,
     YearnVaultsV2,
 )
+from rotkehlchen.chain.ethereum.modules.convex.convex import Convex
 from rotkehlchen.chain.ethereum.modules.eth2.structures import Eth2Validator
 from rotkehlchen.chain.ethereum.tokens import EthTokens
 from rotkehlchen.chain.ethereum.types import string_to_ethereum_address
@@ -568,6 +569,10 @@ class ChainManager(CacheableMixIn, LockableQueryMixIn):
 
     @overload
     def get_module(self, module_name: Literal['nfts']) -> Optional['Nfts']:
+        ...
+
+    @overload
+    def get_module(self, module_name: Literal['convex']) -> Optional[Convex]:
         ...
 
     def get_module(self, module_name: ModuleName) -> Optional[Any]:
@@ -1674,6 +1679,14 @@ class ChainManager(CacheableMixIn, LockableQueryMixIn):
                 deposited_lqty = staked_info.staked.balance
                 eth_balances[address].assets[A_LQTY] += deposited_lqty
                 self.totals.assets[A_LQTY] += deposited_lqty
+
+        convex_module = self.get_module('convex')
+        if convex_module is not None:
+            convex_balances = convex_module.get_balances(addresses=self.queried_addresses_for_module('convex'))  # noqa: E501
+            for address, address_balances in convex_balances.items():
+                for asset, balance in address_balances.items():
+                    eth_balances[address].assets[asset] += balance
+                    self.totals.assets[asset] += balance
 
         # Finally count the balances detected in various protocols in defi balances
         self.add_defi_balances_to_token_and_totals()

@@ -27,3 +27,6 @@ def get_curve_pools() -> Dict[ChecksumEthAddress, CurvePool]:
                 pool_address=info['pool'],
             )
     return pools
+
+
+CURVE_POOLS = get_curve_pools()

@@ -38,6 +38,7 @@ from rotkehlchen.api.v1.schemas import (
     AsyncIgnoreCacheQueryArgumentSchema,
     AsyncQueryArgumentSchema,
     AsyncTasksQuerySchema,
+    AsyncTimerangeQuerySchema,
     AvalancheTransactionQuerySchema,
     BaseXpubSchema,
     BinanceMarketsSchema,
@@ -2631,3 +2632,32 @@ class ConfigurationsResource(BaseMethodView):
 
     def get(self) -> Response:
         return self.rest_api.get_config_arguments()
+
+
+class ConvexBalancesResource(BaseMethodView):
+
+    get_schema = AsyncQueryArgumentSchema()
+
+    @require_loggedin_user()
+    @use_kwargs(get_schema, location='json_and_query')
+    def get(self, async_query: bool) -> Response:
+        return self.rest_api.get_convex_balances(async_query)
+
+
+class ConvexHistoryResource(BaseMethodView):
+
+    get_schema = AsyncTimerangeQuerySchema()
+
+    @require_premium_user(active_check=False)
+    @use_kwargs(get_schema, location='json_and_query')
+    def get(
+            self,
+            async_query: bool,
+            from_timestamp: Timestamp,
+            to_timestamp: Timestamp,
+    ) -> Response:
+        return self.rest_api.get_convex_history(
+            async_query=async_query,
+            from_timestamp=from_timestamp,
+            to_timestamp=to_timestamp,
+        )

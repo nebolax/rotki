@@ -30,6 +30,7 @@ from rotkehlchen.chain.ethereum.modules.balancer import (
     BalancerPoolTokenBalance,
 )
 from rotkehlchen.chain.ethereum.modules.compound.compound import CompoundBalance, CompoundEvent
+from rotkehlchen.chain.ethereum.modules.convex.convex import ConvexEvent
 from rotkehlchen.chain.ethereum.modules.eth2.structures import Eth2Deposit
 from rotkehlchen.chain.ethereum.modules.liquity.trove import (
     LiquityStakeEvent,
@@ -157,6 +158,7 @@ def _process_entry(entry: Any) -> Union[str, List[Any], Dict[str, Any], Any]:
             NFTResult,
             ExchangeLocationID,
             WeightedNode,
+            ConvexEvent,
     )):
         return process_result(entry.serialize())
     if isinstance(entry, (

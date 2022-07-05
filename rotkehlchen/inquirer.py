@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, Any, Dict, Iterable, List, NamedTuple, Optiona
 
 from rotkehlchen.assets.asset import Asset, EthereumToken
 from rotkehlchen.chain.ethereum.contracts import EthereumContract
-from rotkehlchen.chain.ethereum.defi.curve_pools import get_curve_pools
+from rotkehlchen.chain.ethereum.defi.curve_pools import CURVE_POOLS
 from rotkehlchen.chain.ethereum.defi.price import handle_defi_price_query
 from rotkehlchen.chain.ethereum.utils import multicall_2, token_normalized_value_decimals
 from rotkehlchen.constants import CURRENCYCONVERTER_API_KEY, ONE, ZERO
@@ -77,6 +77,7 @@ from rotkehlchen.types import (
     CURVE_POOL_PROTOCOL,
     UNISWAP_PROTOCOL,
     YEARN_VAULTS_V2_PROTOCOL,
+    ChecksumEthAddress,
     KnownProtocolsAssets,
     Price,
     Timestamp,
@@ -538,25 +539,20 @@ class Inquirer():
             block_identifier='latest',
         )
 
-    def find_curve_pool_price(
-        self,
-        lp_token: EthereumToken,
-    ) -> Optional[Price]:
+    def find_curve_pool_tokens_amount(
+            self,
+            lp_token_address: ChecksumEthAddress,
+    ) -> Optional[Dict[EthereumToken, Tuple[FVal, FVal]]]:
         """
         1. Obtain the pool for this token
-        2. Obtain prices for assets in pool
-        3. Obtain the virtual price for share and the balances of each
-        token in the pool
-        4. Calc the price for a share
-
-        Returns the price of 1 LP token from the pool
+        2. Obtain prices for assets in the pool
+        3. Calculate share of each token in the pool
         """
         assert self._ethereum is not None, 'Inquirer ethereum manager should have been initialized'  # noqa: E501
 
-        pools = get_curve_pools()
-        if lp_token.ethereum_address not in pools:
+        if lp_token_address not in CURVE_POOLS:
             return None
-        pool = pools[lp_token.ethereum_address]
+        pool = CURVE_POOLS[lp_token_address]
         tokens = []
         # Translate addresses to tokens
         try:
@@ -574,7 +570,7 @@ class Inquirer():
             price = self.find_usd_price(token)
             if price == Price(ZERO):
                 log.error(
-                    f'Could not calculate price for {lp_token} due to inability to '
+                    f'Could not calculate price for {lp_token_address} due to inability to '
                     f'fetch price for {token}.',
                 )
                 return None
@@ -586,8 +582,7 @@ class Inquirer():
             abi=CURVE_POOL_ABI,
             deployed_block=0,
         )
-        calls = [(pool.pool_address, contract.encode(method_name='get_virtual_price'))]
-        calls += [
+        calls = [
             (pool.pool_address, contract.encode(method_name='balances', arguments=[i]))
             for i in range(len(pool.assets))
         ]
@@ -611,13 +606,8 @@ class Inquirer():
         # Deserialize information obtained in the multicall execution
         data = []
         # https://github.com/PyCQA/pylint/issues/4739
-        virtual_price_decoded = contract.decode(output[0][1], 'get_virtual_price')  # pylint: disable=unsubscriptable-object  # noqa: E501
-        if not _check_curve_contract_call(virtual_price_decoded):
-            log.debug(f'Failed to decode get_virtual_price while finding curve price. {output}')
-            return None
-        data.append(FVal(virtual_price_decoded[0]))  # pylint: disable=unsubscriptable-object
         for i in range(len(pool.assets)):
-            amount_decoded = contract.decode(output[i + 1][1], 'balances', arguments=[i])
+            amount_decoded = contract.decode(output[i][1], 'balances', arguments=[i])
             if not _check_curve_contract_call(amount_decoded):
                 log.debug(f'Failed to decode balances {i} while finding curve price. {output}')
                 return None
@@ -627,14 +617,14 @@ class Inquirer():
             data.append(normalized_amount)
 
         # Prices and data should verify this relation for the following operations
-        if len(prices) != len(data) - 1:
+        if len(prices) != len(data):
             log.debug(
                 f'Length of prices {len(prices)} does not match len of data {len(data)} '
                 f'while querying curve pool price.',
             )
             return None
         # Total number of assets price in the pool
-        total_assets_price = sum(map(operator.mul, data[1:], prices))
+        total_assets_price = sum(map(operator.mul, data, prices))
         if total_assets_price == 0:
             log.error(
                 f'Curve pool price returned unexpected data {data} that lead to a zero price.',
@@ -642,9 +632,42 @@ class Inquirer():
             return None
 
         # Calculate weight of each asset as the proportion of tokens value
-        weights = (data[x + 1] * prices[x] / total_assets_price for x in range(len(tokens)))
-        assets_price = FVal(sum(map(operator.mul, weights, prices)))
-        return (assets_price * FVal(data[0])) / (10 ** lp_token.decimals)
+        weights = (data[x] * prices[x] / total_assets_price for x in range(len(tokens)))
+        token_weights: Dict[EthereumToken, Tuple[FVal, FVal]] = {}
+        for token, weight, price in zip(tokens, weights, prices):
+            token_weights[token] = (weight, price)
+        return token_weights
+
+    def find_curve_pool_price(
+        self,
+        lp_token: EthereumToken,
+    ) -> Optional[Price]:
+        """
+        1. Obtain the pool for this token
+        2. Obtain prices for assets in pool
+        3. Obtain the virtual price for share and the balances of each
+        token in the pool
+        4. Calc the price for a share
+
+        Returns the price of 1 LP token from the pool
+        """
+        weighted_prices = self.find_curve_pool_tokens_amount(
+            lp_token_address=lp_token.ethereum_address,
+        )
+        if weighted_prices is None:
+            return None
+        pool = CURVE_POOLS[lp_token.ethereum_address]
+        assets_price = FVal(sum([weight * price for (weight, price) in weighted_prices.values()]))
+        try:
+            virtual_price = self._ethereum.call_contract(  # type: ignore
+                contract_address=pool.pool_address,
+                method_name='get_virtual_price',
+                abi=CURVE_POOL_ABI,
+            )
+        except (BlockchainQueryError, RemoteError) as e:
+            log.debug(f'Failed to query get_virtual_price of for pool {pool.pool_address} due to {str(e)}')  # noqa: E501
+            return None
+        return assets_price * virtual_price / (10 ** lp_token.decimals)
 
     def find_yearn_price(
         self,
