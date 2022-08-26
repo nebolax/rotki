@@ -294,13 +294,21 @@ def insert_tag_mappings(
         write_cursor: 'DBCursor',
         data: Union[List['ManuallyTrackedBalance'], List[BlockchainAccountData], List['XpubData']],
         object_reference_keys: List[
-            Literal['id', 'address', 'xpub.xpub', 'derivation_path'],
+            Literal['id', 'address', 'xpub.xpub', 'derivation_path', 'blockchain.value'],
         ],
+        blockchain: Optional[SupportedBlockchain] = None,
 ) -> None:
     """
     Inserts the tag mappings from a list of potential data entries. If multiple keys are given
     then the concatenation of their values is what goes in as the object reference.
     """
+    # Validate passed keys
+    if 'xpub.xpub' in object_reference_keys and 'blockchain.value' not in object_reference_keys:
+        raise AssertionError('blockchain.value must be in reference keys when inserting xpub tags')
+    if 'address' in object_reference_keys and blockchain is None:
+        raise AssertionError('When using address as reference key, blockchain must be provided')
+    if 'address' not in object_reference_keys and blockchain is not None:
+        raise AssertionError('blockchain cannot be provided when using address as reference key')
     mapping_tuples = []
     for entry in data:
         if entry.tags is not None:
@@ -309,6 +317,8 @@ def insert_tag_mappings(
                 value = rgetattr(entry, key)
                 if value is not None:
                     reference += str(value)
+            if blockchain is not None:
+                reference += blockchain.value
             mapping_tuples.extend([(reference, tag) for tag in entry.tags])
 
     write_cursor.executemany(

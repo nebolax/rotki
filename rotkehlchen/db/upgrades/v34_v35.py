@@ -50,6 +50,24 @@ def _rename_assets_identifiers(cursor: 'DBCursor') -> None:
     cursor.executemany('UPDATE OR IGNORE assets SET identifier=? WHERE identifier=?', sqlite_tuples)  # noqa: E501
 
 
+def _update_tags(cursor: 'DBCursor'):
+    """Include blockchain in object_reference keys of xpubs and blockchain accounts"""
+    cursor.execute(
+        'UPDATE tag_mappings SET '
+        'object_reference=( '
+        'SELECT xpubs.xpub || xpubs.derivation_path || xpubs.blockchain '
+        'FROM xpubs WHERE object_reference=xpubs.xpub || xpub.derivation_path) '
+        'WHERE object_reference IN (SELECT xpubs.xpub || xpubs.derivation_path FROM xpubs)',
+    )
+    cursor.execute(
+        'UPDATE tag_mappings SET '
+        'object_reference=( '
+        'SELECT blockchain_accounts.account || blockchain_accounts.blockchain '
+        'FROM blockchain_accounts WHERE object_reference=blockchain_accounts.account) '
+        'WHERE object_reference IN (SELECT blockchain_accounts.account FROM blockchain_accounts)',
+    )
+
+
 def upgrade_v34_to_v35(db: 'DBHandler') -> None:
     """Upgrades the DB from v34 to v35
     - Change tables where time is used as column name to timestamp
@@ -59,4 +77,5 @@ def upgrade_v34_to_v35(db: 'DBHandler') -> None:
     with db.user_write() as cursor:
         _rename_assets_identifiers(cursor)
         _refactor_time_columns(cursor)
+        _update_tags(cursor)
         _create_new_tables(cursor)

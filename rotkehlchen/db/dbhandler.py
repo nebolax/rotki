@@ -1258,7 +1258,12 @@ class DBHandler:
                 f'Blockchain account/s {[x.address for x in account_data]} already exist',
             ) from e
 
-        insert_tag_mappings(write_cursor=write_cursor, data=account_data, object_reference_keys=['address'])  # noqa: E501
+        insert_tag_mappings(
+            write_cursor=write_cursor,
+            data=account_data,
+            object_reference_keys=['address'],
+            blockchain=blockchain,
+        )
 
     def edit_blockchain_accounts(
             self,
@@ -1275,7 +1280,7 @@ class DBHandler:
         # Delete the current tag mappings for all affected accounts
         write_cursor.executemany(
             'DELETE FROM tag_mappings WHERE '
-            'object_reference = ?;', [(x.address,) for x in account_data],
+            'object_reference = ?;', [(x.address + blockchain.value,) for x in account_data],
         )
 
         # Update the blockchain account labels in the DB
@@ -1295,7 +1300,12 @@ class DBHandler:
             log.error(msg)
             raise InputError(msg)
 
-        insert_tag_mappings(write_cursor=write_cursor, data=account_data, object_reference_keys=['address'])  # noqa: E501
+        insert_tag_mappings(
+            write_cursor=write_cursor,
+            data=account_data,
+            object_reference_keys=['address'],
+            blockchain=blockchain,
+        )
 
     def remove_blockchain_accounts(
             self,
@@ -1317,7 +1327,7 @@ class DBHandler:
                 self.delete_data_for_ethereum_address(write_cursor, address)  # type: ignore
 
         tuples = [(blockchain.value, x) for x in accounts]
-        account_tuples = [(x,) for x in accounts]
+        account_tuples = [(x + blockchain.value,) for x in accounts]
 
         write_cursor.executemany(
             'DELETE FROM tag_mappings WHERE '
@@ -1502,7 +1512,7 @@ class DBHandler:
         query = cursor.execute(
             'SELECT A.account, A.label, group_concat(B.tag_name,",") '
             'FROM blockchain_accounts AS A '
-            'LEFT OUTER JOIN tag_mappings AS B ON B.object_reference = A.account '
+            'LEFT OUTER JOIN tag_mappings AS B ON B.object_reference = A.account || A.blockchain '
             'WHERE A.blockchain=? GROUP BY account;',
             (blockchain.value,),
         )
@@ -3038,14 +3048,15 @@ class DBHandler:
         write_cursor.execute(
             'DELETE FROM tag_mappings WHERE '
             'object_reference IN ('
-            'SELECT address from xpub_mappings WHERE xpub=? and derivation_path IS ?);',
+            'SELECT address || xpub_mappings.blockchain FROM xpub_mappings '
+            'WHERE xpub=? AND derivation_path IS ?);',
             (
                 xpub_data.xpub.xpub,
                 xpub_data.serialize_derivation_path_for_db(),
             ),
         )
         # Delete the tag mappings for the xpub itself (type ignore is for xpub is not None
-        key = xpub_data.xpub.xpub + xpub_data.serialize_derivation_path_for_db()  # type: ignore
+        key = xpub_data.xpub.xpub + xpub_data.serialize_derivation_path_for_db() + blockchain.value  # type: ignore
         write_cursor.execute('DELETE FROM tag_mappings WHERE object_reference=?', (key,))
         # Delete any derived addresses
         write_cursor.execute(
@@ -3070,14 +3081,14 @@ class DBHandler:
         - InputError if the xpub data already exist
         """
         try:
-            key = xpub_data.xpub.xpub + xpub_data.serialize_derivation_path_for_db()  # type: ignore # noqa: E501
+            key = xpub_data.xpub.xpub + xpub_data.serialize_derivation_path_for_db() + xpub_data.blockchain.value # type: ignore # noqa: E501
             # Delete the tag mappings for the xpub itself (type ignore is for xpub is not None)
             write_cursor.execute('DELETE FROM tag_mappings WHERE object_reference=?', (key,))
             insert_tag_mappings(
                 # if we got tags add them to the xpub
                 write_cursor=write_cursor,
                 data=[xpub_data],
-                object_reference_keys=['xpub.xpub', 'derivation_path'],
+                object_reference_keys=['xpub.xpub', 'derivation_path', 'blockchain.value'],
             )
             write_cursor.execute(
                 'UPDATE xpubs SET label=? WHERE xpub=? AND derivation_path=?',
@@ -3097,7 +3108,7 @@ class DBHandler:
         query = cursor.execute(
             'SELECT A.xpub, A.derivation_path, A.label, group_concat(B.tag_name,",") '
             'FROM xpubs as A LEFT OUTER JOIN tag_mappings AS B ON '
-            'B.object_reference = A.xpub || A.derivation_path GROUP BY A.xpub || A.derivation_path;',  # noqa: E501
+            'B.object_reference = A.xpub || A.derivation_path || A.blockchain GROUP BY A.xpub || A.derivation_path || A.blockchain;',  # noqa: E501
         )
         result = []
         for entry in query:

@@ -32,7 +32,7 @@ def fixture_setup_db_for_xpub_tests(data_dir, username, sql_vm_instructions_cb):
         insert_tag_mappings(    # if we got tags add them to the xpub
             write_cursor=cursor,
             data=[xpub_data1],
-            object_reference_keys=['xpub.xpub', 'derivation_path'],
+            object_reference_keys=['xpub.xpub', 'derivation_path', 'blockchain.value'],
         )
 
         data.db.add_bitcoin_xpub(cursor, xpub_data1, SupportedBlockchain.BITCOIN_CASH)
@@ -52,6 +52,7 @@ def fixture_setup_db_for_xpub_tests(data_dir, username, sql_vm_instructions_cb):
             write_cursor=cursor,
             data=account_data,
             object_reference_keys=['address'],
+            blockchain=SupportedBlockchain.BITCOIN_CASH,
         )
         data.db.ensure_xpub_mappings_exist(
             cursor,

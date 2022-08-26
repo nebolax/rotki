@@ -217,13 +217,14 @@ class XpubManager():
                 insert_tag_mappings(  # if we got tags add them to the xpub
                     write_cursor=cursor,
                     data=[xpub_data],
-                    object_reference_keys=['xpub.xpub', 'derivation_path'],
+                    object_reference_keys=['xpub.xpub', 'derivation_path', 'blockchain.value'],
                 )
             if new_xpub and len(existing_address_data) != 0:
                 insert_tag_mappings(  # if we got tags add them to the existing addresses too
                     write_cursor=cursor,
                     data=existing_address_data,
                     object_reference_keys=['address'],
+                    blockchain=blockchain,
                 )
 
             if len(new_addresses) != 0:
