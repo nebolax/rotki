@@ -8,7 +8,7 @@ from rotkehlchen.constants.resolver import (
     ETHEREUM_DIRECTIVE_LENGTH,
     ChainID,
     EvmTokenKind,
-    evm_address_to_identifier,
+    ethaddress_to_identifier,
     strethaddress_to_identifier,
 )
 
@@ -179,12 +179,7 @@ def upgrade_ethereum_asset_ids_v3(cursor: 'DBCursor') -> EVM_TUPLES_CREATION_TYP
     common_asset_details = []
 
     for entry in query:
-        new_id = evm_address_to_identifier(
-            address=entry[0],
-            chain=ChainID.ETHEREUM,
-            token_type=EvmTokenKind.ERC20,
-            collectible_id=None,
-        )
+        new_id = ethaddress_to_identifier(entry[0])
         old_ethereum_id_to_new[entry[3]] = new_id
         old_ethereum_data.append((new_id, *entry))
 
@@ -199,11 +194,7 @@ def upgrade_ethereum_asset_ids_v3(cursor: 'DBCursor') -> EVM_TUPLES_CREATION_TYP
         ))
         new_swapped_for = old_ethereum_id_to_new.get(entry[8])
         if new_swapped_for is not None:
-            new_swapped_for = evm_address_to_identifier(
-                address=entry[8][ETHEREUM_DIRECTIVE_LENGTH:],
-                chain=ChainID.ETHEREUM,
-                token_type=EvmTokenKind.ERC20,
-            )
+            new_swapped_for = ethaddress_to_identifier(entry[8][ETHEREUM_DIRECTIVE_LENGTH:])
             old_ethereum_id_to_new[entry[8]] = new_swapped_for
 
         assets_tuple.append((
@@ -243,11 +234,14 @@ def upgrade_other_assets(cursor: 'DBCursor') -> ASSET_CREATION_TYPE:
     for entry in result:
         if entry[0] in OTHER_EVM_CHAINS_ASSETS:
             continue
+        swapped_for = entry[5]
+        if swapped_for is not None and swapped_for.startswith(ETHEREUM_DIRECTIVE):
+            swapped_for = ethaddress_to_identifier(swapped_for[ETHEREUM_DIRECTIVE_LENGTH:])
         assets_tuple.append((
             entry[0],  # identifier
             entry[1],  # type
             entry[4],  # started
-            entry[5],  # swapped for
+            swapped_for,
         ))
         common_asset_details.append((
             entry[0],  # identifier
@@ -272,18 +266,8 @@ def translate_underlying_table(cursor: 'DBCursor') -> List[Tuple[str, str, str]]
     )
     mappings = []
     for row in query:
-        new_address = evm_address_to_identifier(
-            address=row[0],
-            chain=ChainID.ETHEREUM,
-            token_type=EvmTokenKind.ERC20,
-            collectible_id=None,
-        )
-        new_parent = evm_address_to_identifier(
-            address=row[2],
-            chain=ChainID.ETHEREUM,
-            token_type=EvmTokenKind.ERC20,
-            collectible_id=None,
-        )
+        new_address = ethaddress_to_identifier(row[0])
+        new_parent = ethaddress_to_identifier(row[2])
         mappings.append((new_address, row[1], new_parent))
     return mappings
 
