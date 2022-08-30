@@ -11,6 +11,7 @@ from typing import (
     Union,
     overload,
 )
+from uuid import uuid4
 
 import webargs
 from eth_utils import to_checksum_address
@@ -26,7 +27,7 @@ from rotkehlchen.accounting.structures.types import (
     HistoryEventType,
 )
 from rotkehlchen.accounting.types import SchemaEventType
-from rotkehlchen.assets.asset import EvmToken, UnderlyingToken
+from rotkehlchen.assets.asset import EvmToken, UnderlyingToken, CustomAsset
 from rotkehlchen.assets.types import AssetType
 from rotkehlchen.balances.manual import ManuallyTrackedBalance
 from rotkehlchen.chain.bitcoin.bch.utils import validate_bch_address_input
@@ -2450,3 +2451,57 @@ class UserNotesGetSchema(DBPaginationSchema, DBOrderBySchema):
         return {
             'filter_query': filter_query,
         }
+
+
+class SearchCustomAssetsSchema(Schema):
+    identifier = fields.String(load_default=None)
+    name = fields.String(load_defauld=None)
+    custom_asset_type = fields.String(load_default=None)
+    symbol = fields.String(load_default=None)
+    # we can't load `CustomAsset` here since it requires not-none identifier and name
+
+
+class AddCustomAssetSchema(Schema):
+    name = fields.String(required=True)
+    custom_asset_type = fields.String(load_default=None)
+    symbol = fields.String(load_default=None)
+    notes = fields.String(load_default=None)
+
+    @post_load
+    def make_custom_asset(  # pylint: disable=no-self-use
+            self,
+            data: Dict[str, Any],
+            **_kwargs: Any,
+    ) -> CustomAsset:
+        return CustomAsset.initialize(
+            identifier=str(uuid4()),  # we use uuid for custom assets
+            name=data['name'],  # validated by marshmallow
+            custom_asset_type=data.get('custom_asset_type'),
+            symbol=data.get('symbol'),
+            notes=data.get('notes'),
+        )
+
+
+class EditCustomAssetSchema(Schema):
+    identifier = fields.String(required=True)
+    name = fields.String(required=True)
+    custom_asset_type = fields.String()
+    symbol = fields.String()
+    notes = fields.String()
+
+    @post_load
+    def make_custom_asset(  # pylint: disable=no-self-use
+            self,
+            data: Dict[str, Any],
+            **_kwargs: Any,
+    ) -> CustomAsset:
+        # All fields are provided and this is verified by marshmallow. We require all fields here
+        # since custom asset's properties are fully overwritten by the new values. If we don't do
+        # it users might be surprised by unwanted values update.
+        return CustomAsset.initialize(
+            identifier=data['id'],
+            name=data['name'],
+            custom_asset_type=data['custom_asset_type'],
+            symbol=data['symbol'],
+            notes=data['notes'],
+        )

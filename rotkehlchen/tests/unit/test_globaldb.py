@@ -117,7 +117,7 @@ def test_add_edit_token_with_wrong_swapped_for(globaldb):
         symbol='DELME',
     )
     token_to_delete_id = token_to_delete.identifier
-    globaldb.add_asset(
+    globaldb.add_coin(
         asset_id=token_to_delete_id,
         asset_type=AssetType.EVM_TOKEN,
         data=token_to_delete,
@@ -132,7 +132,7 @@ def test_add_edit_token_with_wrong_swapped_for(globaldb):
 
     # now try to add a new token with swapped_for pointing to a non existing token in the DB
     with pytest.raises(InputError):
-        globaldb.add_asset(
+        globaldb.add_coin(
             asset_id='NEWID',
             asset_type=AssetType.EVM_TOKEN,
             data=EvmToken.initialize(
@@ -165,7 +165,7 @@ def test_add_edit_token_with_wrong_swapped_for(globaldb):
 
 @pytest.mark.parametrize('use_clean_caching_directory', [True])
 def test_check_asset_exists(globaldb):
-    globaldb.add_asset(
+    globaldb.add_coin(
         asset_id='1',
         asset_type=AssetType.OWN_CHAIN,
         data={
@@ -174,7 +174,7 @@ def test_check_asset_exists(globaldb):
             'started': 0,
         },
     )
-    globaldb.add_asset(
+    globaldb.add_coin(
         asset_id='2',
         asset_type=AssetType.FIAT,
         data={
@@ -183,7 +183,7 @@ def test_check_asset_exists(globaldb):
             'started': 0,
         },
     )
-    globaldb.add_asset(
+    globaldb.add_coin(
         asset_id='3',
         asset_type=AssetType.OMNI_TOKEN,
         data={
@@ -199,7 +199,7 @@ def test_check_asset_exists(globaldb):
     assert globaldb.check_asset_exists(AssetType.OMNI_TOKEN, name='Lolcoin', symbol='LOLZ') == ['3']  # noqa: E501
 
     # now add another asset already existing, but with different ID. See both returned
-    globaldb.add_asset(
+    globaldb.add_coin(
         asset_id='4',
         asset_type=AssetType.FIAT,
         data={
@@ -557,7 +557,7 @@ def test_global_db_restore(globaldb, database):
         name='willdell',
         symbol='DELME',
     )
-    globaldb.add_asset(
+    globaldb.add_coin(
         asset_id=token_to_delete.identifier,
         asset_type=AssetType.EVM_TOKEN,
         data=token_to_delete,
@@ -578,13 +578,13 @@ def test_global_db_restore(globaldb, database):
             weight=1,
         )],
     )
-    globaldb.add_asset(
+    globaldb.add_coin(
         asset_id=with_underlying.identifier,
         asset_type=AssetType.EVM_TOKEN,
         data=with_underlying,
     )
     # Add asset that is not a token
-    globaldb.add_asset(
+    globaldb.add_coin(
         asset_id='1',
         asset_type=AssetType.OWN_CHAIN,
         data={
@@ -595,7 +595,7 @@ def test_global_db_restore(globaldb, database):
     )
 
     # Add asset that is not a token
-    globaldb.add_asset(
+    globaldb.add_coin(
         asset_id='2',
         asset_type=AssetType.OWN_CHAIN,
         data={
@@ -694,7 +694,7 @@ def test_global_db_reset(globaldb):
         name='willdell',
         symbol='DELME',
     )
-    globaldb.add_asset(
+    globaldb.add_coin(
         asset_id=token_to_delete.identifier,
         asset_type=AssetType.EVM_TOKEN,
         data=token_to_delete,
@@ -715,13 +715,13 @@ def test_global_db_reset(globaldb):
             weight=1,
         )],
     )
-    globaldb.add_asset(
+    globaldb.add_coin(
         asset_id=with_underlying.identifier,
         asset_type=AssetType.EVM_TOKEN,
         data=with_underlying,
     )
     # Add asset that is not a token
-    globaldb.add_asset(
+    globaldb.add_coin(
         asset_id='1',
         asset_type=AssetType.OWN_CHAIN,
         data={
@@ -814,7 +814,7 @@ def test_evm_token_deletion(globaldb):
         )],
     )
     # Create token
-    globaldb.add_asset(
+    globaldb.add_coin(
         asset_id=token_data.identifier,
         asset_type=AssetType.EVM_TOKEN,
         data=token_data,
@@ -828,8 +828,20 @@ def test_evm_token_deletion(globaldb):
         )
     # Then check that deletion was nice and smooth, and we can create this token again
     # without getting any constraints hit
-    globaldb.add_asset(
+    globaldb.add_coin(
         asset_id=token_data.identifier,
         asset_type=AssetType.EVM_TOKEN,
         data=token_data,
     )
+
+
+def test_xyz(globaldb):
+    globaldb.add_coin(
+        asset_id='XYZ_123_ABC',
+        asset_type=AssetType.OWN_CHAIN,
+        data={},
+    )
+    asset1 = globaldb.get_asset_data(identifier='XYZ_123_ABC', form_with_incomplete_data=False)
+    print(asset1.symbol)
+    asset2 = Asset('XYZ_123_ABC')
+    print(asset2.symbol)

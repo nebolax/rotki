@@ -45,7 +45,7 @@ from rotkehlchen.accounting.structures.types import (
     HistoryEventType,
 )
 from rotkehlchen.api.v1.schemas import TradeSchema
-from rotkehlchen.assets.asset import Asset, EvmToken
+from rotkehlchen.assets.asset import Asset, EvmToken, CustomAsset
 from rotkehlchen.assets.resolver import AssetResolver
 from rotkehlchen.assets.spam_assets import update_spam_assets
 from rotkehlchen.assets.types import AssetType
@@ -89,6 +89,7 @@ from rotkehlchen.constants.resolver import (
 from rotkehlchen.data_import.manager import DataImportSource
 from rotkehlchen.db.addressbook import DBAddressbook
 from rotkehlchen.db.constants import HISTORY_MAPPING_CUSTOMIZED
+from rotkehlchen.db.custom_assets import DBCustomAssets
 from rotkehlchen.db.ens import DBEns
 from rotkehlchen.db.ethtx import DBEthTx
 from rotkehlchen.db.filtering import (
@@ -1352,7 +1353,7 @@ class RestAPI():
         types = [str(x) for x in AssetType if x not in ASSET_TYPES_EXCLUDED_FOR_USERS]
         return api_response(_wrap_in_ok_result(types), status_code=HTTPStatus.OK)
 
-    def add_custom_asset(self, asset_type: AssetType, **kwargs: Any) -> Response:
+    def add_coin(self, asset_type: AssetType, **kwargs: Any) -> Response:
         globaldb = GlobalDBHandler()
         # There is no good way to figure out if an asset already exists in the DB
         # Best approximation we can do is this.
@@ -1389,9 +1390,9 @@ class RestAPI():
         )
 
     @staticmethod
-    def edit_custom_asset(data: Dict[str, Any]) -> Response:
+    def edit_coin(data: Dict[str, Any]) -> Response:
         try:
-            GlobalDBHandler().edit_custom_asset(data)
+            GlobalDBHandler().edit_coin(data)
         except InputError as e:
             return api_response(wrap_in_fail_result(str(e)), status_code=HTTPStatus.CONFLICT)
 
@@ -1399,19 +1400,23 @@ class RestAPI():
         AssetResolver().assets_cache.pop(data['identifier'], None)
         return api_response(OK_RESULT, status_code=HTTPStatus.OK)
 
-    def delete_custom_asset(self, identifier: str) -> Response:
+    def _delete_asset(self, identifier: str) -> Dict[str, Any]:
         try:
             with self.rotkehlchen.data.db.user_write() as cursor:
                 # Before deleting, also make sure we have up to date global DB owned data
                 self.rotkehlchen.data.db.update_owned_assets_in_globaldb(cursor)
                 self.rotkehlchen.data.db.delete_asset_identifier(cursor, identifier)
                 GlobalDBHandler().delete_asset_by_identifier(cursor, identifier)
+            # Also clear the in-memory cache of the asset resolver
+            AssetResolver().assets_cache.pop(identifier, None)
+            return OK_RESULT
         except InputError as e:
-            return api_response(wrap_in_fail_result(str(e)), status_code=HTTPStatus.CONFLICT)
+            return wrap_in_fail_result(message=str(e), status_code=HTTPStatus.CONFLICT)
 
-        # Also clear the in-memory cache of the asset resolver
-        AssetResolver().assets_cache.pop(identifier, None)
-        return api_response(OK_RESULT, status_code=HTTPStatus.OK)
+    def delete_asset(self, identifier: str) -> Response:
+        result = self._delete_asset(identifier=identifier)
+        status_code = result.pop('status_code', HTTPStatus.OK)
+        return api_response(result, status_code=status_code)
 
     def replace_asset(self, source_identifier: str, target_asset: Asset) -> Response:
         try:
@@ -4599,3 +4604,34 @@ class RestAPI():
         except InputError as e:
             return api_response(wrap_in_fail_result(str(e)), status_code=HTTPStatus.CONFLICT)
         return api_response(OK_RESULT, status_code=HTTPStatus.OK)
+
+    def search_custom_asset(
+            self,
+            identifier: Optional[str],
+            name: Optional[str],
+            custom_asset_type: Optional[str],
+            symbol: Optional[str],
+    ) -> Response:
+        db_custom_assets = DBCustomAssets(db_handler=self.rotkehlchen.data.db)
+        # TODO: perhaps should use filters here
+
+    def add_custom_asset(self, custom_asset: CustomAsset) -> Response:
+        db_custom_assets = DBCustomAssets(db_handler=self.rotkehlchen.data.db)
+        # TODO: check errors and produce proper response
+        with db_custom_assets.db.user_write() as write_cursor:
+            db_custom_assets.add_custom_asset(write_cursor=write_cursor, custom_asset=custom_asset)
+
+    def edit_custom_asset(self, custom_asset: CustomAsset) -> Response:
+        db_custom_assets = DBCustomAssets(db_handler=self.rotkehlchen.data.db)
+        # TODO: check errors and produce proper response
+
+        # TODO: check edit asset behaviour on the other endpoint and check whether it accidentally updates values
+        with db_custom_assets.db.user_write() as write_cursor:
+            db_custom_assets.edit_custom_asset(write_cursor=write_cursor, custom_asset=custom_asset)
+
+    def delete_custom_asset(self, identifier: str) -> Response:
+        db_custom_assets = DBCustomAssets(db_handler=self.rotkehlchen.data.db)
+        # TODO: check that custom asset exists and check a to-do of DBCustomAssets.delete_custom_asset
+        result = self._delete_asset(identifier=identifier)
+        status_code = result.pop('status_code', HTTPStatus.OK)
+        return api_response(result, status_code=status_code)

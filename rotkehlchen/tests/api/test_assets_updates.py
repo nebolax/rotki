@@ -200,7 +200,7 @@ INSERT INTO assets(identifier,type, started, swapped_for) VALUES("DASH", "B", 13
 INSERT INTO evm_tokens(identifier, token_kind, chain, address, decimals, protocol) VALUES("eip155:1/erc20:0x1B175474E89094C44Da98b954EedeAC495271d0F", "A", "A", "0x1B175474E89094C44Da98b954EedeAC495271d0F", 18, NULL);INSERT INTO assets(identifier,type, started, swapped_for) VALUES("eip155:1/erc20:0x1B175474E89094C44Da98b954EedeAC495271d0F", "C", 1573672677, NULL); INSERT INTO common_asset_details(identifier, name, symbol, coingecko, cryptocompare, forked) VALUES("eip155:1/erc20:0x1B175474E89094C44Da98b954EedeAC495271d0F", "Conflicting token", "CTK", "ctk", NULL, NULL)
 *
     """  # noqa: E501
-    globaldb.add_asset(  # add a conflicting token
+    globaldb.add_coin(  # add a conflicting token
         asset_id='eip155:1/erc20:0x1B175474E89094C44Da98b954EedeAC495271d0F',
         asset_type=AssetType.EVM_TOKEN,
         data=EvmToken.initialize(

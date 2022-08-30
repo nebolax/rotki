@@ -299,7 +299,7 @@ def test_price_underlying_tokens(inquirer, globaldb):
             UnderlyingToken(address=A_CRV.evm_address, token_kind=EvmTokenKind.ERC20, weight=crv_weight),  # noqa: E501
         ],
     )
-    globaldb.add_asset(
+    globaldb.add_coin(
         asset_id=identifier,
         asset_type=AssetType.EVM_TOKEN,
         data=token,
@@ -324,7 +324,7 @@ def test_find_uniswap_v2_lp_token_price(inquirer, globaldb, ethereum_manager):
         symbol='UNI-V2',
         protocol='UNI-V2',
     )
-    globaldb.add_asset(
+    globaldb.add_coin(
         asset_id=identifier,
         asset_type=AssetType.EVM_TOKEN,
         data=token,

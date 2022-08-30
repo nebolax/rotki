@@ -728,7 +728,7 @@ class GlobalDBHandler():
         return asset_identifier
 
     @staticmethod
-    def edit_custom_asset(data: Dict[str, Any]) -> None:
+    def edit_coin(data: Dict[str, Any]) -> None:
         """Edits an already existing custom asset in the DB
 
         The data should already be typed (as given in by marshmallow).

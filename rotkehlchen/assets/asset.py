@@ -714,6 +714,7 @@ class Asset():
     identifier: str
     form_with_incomplete_data: InitVar[bool] = field(default=False)
     direct_field_initialization: InitVar[bool] = field(default=False)
+    # `initialize` classmethods support optional name and symbol
     name: str = field(init=False)
     symbol: str = field(init=False)
     asset_type: AssetType = field(init=False)
@@ -1127,3 +1128,39 @@ class EvmToken(HasEvmToken):
             )
         except DeserializationError:
             return None
+
+
+# Create a generic variable that can be 'CustomAsset', or any subclass such as stock, painting, etc.  # noqa: E501
+R = TypeVar('R', bound='CustomAsset')
+
+
+@dataclass(init=True, repr=True, eq=False, order=False, unsafe_hash=False, frozen=True)
+class CustomAsset(Asset):
+    """Class to represent assets added by users that are not crypto coins"""
+    custom_asset_type: Optional[str] = field(init=False)
+    notes: Optional[str] = field(init=False)
+
+    @classmethod
+    def initialize(  # type: ignore  # figure out a way to make mypy happy
+            cls: Type[R],
+            identifier: str,
+            name: str,
+            custom_asset_type: Optional[str] = None,
+            symbol: Optional[str] = None,
+            notes: Optional[str] = None,
+            # TODO: add `swapped_for` and `started` here and in API since Yabir said they make sense
+    ) -> R:
+        """Initialize a custom asset from fields"""
+        custom_asset = cls('whatever', direct_field_initialization=True)
+        object.__setattr__(custom_asset, 'identifier', identifier)
+        object.__setattr__(custom_asset, 'name', name)
+        object.__setattr__(custom_asset, 'symbol', symbol)
+        object.__setattr__(custom_asset, 'asset_type', AssetType.CUSTOM_ASSET)
+        object.__setattr__(custom_asset, 'custom_asset_type', custom_asset_type)
+        object.__setattr__(custom_asset, 'notes', notes)
+        object.__setattr__(custom_asset, 'started', None)
+        object.__setattr__(custom_asset, 'forked', None)
+        object.__setattr__(custom_asset, 'swapped_for', None)
+        object.__setattr__(custom_asset, 'cryptocompare', None)
+        object.__setattr__(custom_asset, 'coingecko', None)
+        return custom_asset

@@ -849,7 +849,7 @@ def test_exporting_custom_assets_list(rotkehlchen_api_server, globaldb, with_cus
     """Test that the endpoint for exporting custom assets works correctly"""
     eth_address = make_ethereum_address()
     identifier = ethaddress_to_identifier(eth_address)
-    globaldb.add_asset(
+    globaldb.add_coin(
         asset_id=identifier,
         asset_type=AssetType.EVM_TOKEN,
         data=EvmToken.initialize(

@@ -69,6 +69,7 @@ INSERT OR IGNORE INTO asset_types(type, seq) VALUES ('Y', 25);
 /* NFT */
 INSERT OR IGNORE INTO asset_types(type, seq) VALUES ('Z', 26);
 """
+# TODO: add custom asset type
 
 # Custom enum table for chains
 DB_CREATE_CHAIN_IDS = """

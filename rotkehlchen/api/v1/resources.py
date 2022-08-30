@@ -128,7 +128,7 @@ from rotkehlchen.api.v1.schemas import (
     WatchersDeleteSchema,
     WatchersEditSchema,
     XpubAddSchema,
-    XpubPatchSchema,
+    XpubPatchSchema, SearchCustomAssetsSchema, AddCustomAssetSchema, EditCustomAssetSchema,
 )
 from rotkehlchen.assets.asset import Asset, EvmToken
 from rotkehlchen.assets.types import AssetType
@@ -664,16 +664,16 @@ class AllAssetsResource(BaseMethodView):
     @require_loggedin_user()
     @resource_parser.use_kwargs(make_add_schema, location='json')
     def put(self, asset_type: AssetType, **kwargs: Any) -> Response:
-        return self.rest_api.add_custom_asset(asset_type, **kwargs)
+        return self.rest_api.add_coin(asset_type, **kwargs)
 
     @resource_parser.use_kwargs(make_edit_schema, location='json')
     def patch(self, **kwargs: Any) -> Response:
-        return self.rest_api.edit_custom_asset(kwargs)
+        return self.rest_api.edit_coin(kwargs)
 
     @require_loggedin_user()
     @use_kwargs(delete_schema, location='json')
     def delete(self, identifier: str) -> Response:
-        return self.rest_api.delete_custom_asset(identifier)
+        return self.rest_api.delete_asset(identifier)
 
 
 class AssetsTypesResource(BaseMethodView):
@@ -2677,3 +2677,33 @@ class UserNotesResource(BaseMethodView):
     @use_kwargs(delete_schema, location='json')
     def delete(self, identifier: int) -> Response:
         return self.rest_api.delete_user_note(identifier=identifier)
+
+
+class CustomAssetsResource(BaseMethodView):
+    get_schema = SearchCustomAssetsSchema()
+    put_schema = AddCustomAssetSchema()
+    patch_schema = EditCustomAssetSchema()
+    delete_schema = StringIdentifierSchema()
+
+    # using `json_and_query` location instead of `json` in `get` verb to be able to avoid json args
+    @use_kwargs(get_schema, location='json_and_query')
+    def get(
+            self,
+            identifier: Optional[str],
+            name: Optional[str],
+            custom_asset_type: Optional[str],
+            symbol: Optional[str],
+    ) -> Response:
+        ...  # read existing
+
+    @use_kwargs(put_schema, location='json')
+    def put(self) -> Response:
+        ...  # create
+
+    @use_kwargs(patch_schema, location='json')
+    def patch(self) -> Response:
+        ...  # edit
+
+    @use_kwargs(delete_schema, location='json')
+    def delete(self) -> Response:
+        ...  # remove
