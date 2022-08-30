@@ -2729,7 +2729,8 @@ class DBHandler:
             raise UnknownAsset(source_identifier)
 
         if globaldb_data is not None:
-            globaldb.delete_asset_by_identifer(source_identifier, globaldb_data.asset_type)
+            with globaldb.conn.write_ctx() as write_cursor:
+                globaldb.delete_asset_by_identifier(write_cursor, source_identifier)
 
         if userdb_query != 0:
             with self.user_write() as write_cursor:
