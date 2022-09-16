@@ -6,7 +6,7 @@ from enum import auto
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Dict, Iterable, List, NamedTuple, Optional, Tuple, Union
 
-from rotkehlchen.assets.asset import Asset, EvmToken
+from rotkehlchen.assets.asset import Asset, AssetWithSymbol, EvmToken
 from rotkehlchen.chain.ethereum.defi.price import handle_defi_price_query
 from rotkehlchen.chain.ethereum.types import string_to_evm_address
 from rotkehlchen.chain.ethereum.utils import token_normalized_value_decimals
@@ -464,6 +464,7 @@ class Inquirer():
 
         if asset.is_fiat():
             try:
+                asset = AssetWithSymbol(asset.identifier)
                 return instance._query_fiat_pair(base=asset, quote=A_USD)
             except RemoteError:
                 pass  # continue, a price can be found by one of the oracles (CC for example)
@@ -472,14 +473,13 @@ class Inquirer():
         is_known_protocol = False
         underlying_tokens = None
         try:
-            token = EvmToken.from_asset(asset)
-            if token is not None:
-                if token.protocol is not None:
-                    is_known_protocol = token.protocol in KnownProtocolsAssets
-                underlying_tokens = GlobalDBHandler().get_evm_token(  # type: ignore
-                    token.evm_address,
-                    chain=ChainID.ETHEREUM,
-                ).underlying_tokens
+            token = EvmToken(asset.identifier)
+            if token.protocol is not None:
+                is_known_protocol = token.protocol in KnownProtocolsAssets
+            underlying_tokens = GlobalDBHandler().get_evm_token(  # type: ignore
+                token.evm_address,
+                chain=ChainID.ETHEREUM,
+            ).underlying_tokens
         except UnknownAsset:
             pass
 
@@ -522,7 +522,7 @@ class Inquirer():
         # BSQ is a special asset that doesnt have oracle information but its custom API
         if asset == A_BSQ:
             try:
-                price_in_btc = get_bisq_market_price(asset)
+                price_in_btc = get_bisq_market_price(A_BSQ)
                 btc_price = Inquirer().find_usd_price(A_BTC)
                 usd_price = Price(price_in_btc * btc_price)
                 Inquirer._cached_current_price[cache_key] = CachedPriceEntry(
@@ -706,7 +706,7 @@ class Inquirer():
         return None
 
     @staticmethod
-    def get_fiat_usd_exchange_rates(currencies: Iterable[Asset]) -> Dict[Asset, Price]:
+    def get_fiat_usd_exchange_rates(currencies: Iterable[AssetWithSymbol]) -> Dict[AssetWithSymbol, Price]:  # noqa: E501
         """Gets the USD exchange rate of any of the given assets
 
         In case of failure to query a rate it's returned as zero"""
@@ -721,8 +721,8 @@ class Inquirer():
 
     @staticmethod
     def query_historical_fiat_exchange_rates(
-            from_fiat_currency: Asset,
-            to_fiat_currency: Asset,
+            from_fiat_currency: AssetWithSymbol,
+            to_fiat_currency: AssetWithSymbol,
             timestamp: Timestamp,
     ) -> Optional[Price]:
         assert from_fiat_currency.is_fiat(), 'fiat currency should have been provided'
@@ -761,7 +761,7 @@ class Inquirer():
         return rate
 
     @staticmethod
-    def _query_fiat_pair(base: Asset, quote: Asset) -> Price:
+    def _query_fiat_pair(base: AssetWithSymbol, quote: AssetWithSymbol) -> Price:
         """Queries the current price between two fiat assets
 
         If a current price is not found but a cached price within 30 days is found

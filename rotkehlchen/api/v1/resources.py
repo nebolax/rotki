@@ -132,7 +132,7 @@ from rotkehlchen.api.v1.schemas import (
     XpubAddSchema,
     XpubPatchSchema,
 )
-from rotkehlchen.assets.asset import Asset, EvmToken
+from rotkehlchen.assets.asset import Asset, AssetWithSymbol, EvmToken
 from rotkehlchen.assets.types import AssetType
 from rotkehlchen.balances.manual import ManuallyTrackedBalance
 from rotkehlchen.chain.bitcoin.xpub import XpubData
@@ -843,13 +843,13 @@ class TradesResource(BaseMethodView):
             self,
             timestamp: Timestamp,
             location: Location,
-            base_asset: Asset,
-            quote_asset: Asset,
+            base_asset: AssetWithSymbol,
+            quote_asset: AssetWithSymbol,
             trade_type: TradeType,
             amount: AssetAmount,
             rate: Price,
             fee: Optional[Fee],
-            fee_currency: Optional[Asset],
+            fee_currency: Optional[AssetWithSymbol],
             link: Optional[str],
             notes: Optional[str],
     ) -> Response:
@@ -874,13 +874,13 @@ class TradesResource(BaseMethodView):
             trade_id: str,
             timestamp: Timestamp,
             location: Location,
-            base_asset: Asset,
-            quote_asset: Asset,
+            base_asset: AssetWithSymbol,
+            quote_asset: AssetWithSymbol,
             trade_type: TradeType,
             amount: AssetAmount,
             rate: Price,
             fee: Optional[Fee],
-            fee_currency: Optional[Asset],
+            fee_currency: Optional[AssetWithSymbol],
             link: Optional[str],
             notes: Optional[str],
     ) -> Response:
