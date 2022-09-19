@@ -1,7 +1,7 @@
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from rotkehlchen.accounting.structures.base import (
-    HistoryBaseEntry,
+    CryptoHistoryBaseEntry,
     HistoryEventSubType,
     HistoryEventType,
 )
@@ -34,10 +34,10 @@ class ConvexDecoder(DecoderInterface):
     def _decode_convex_events(
             tx_log: EthereumTxReceiptLog,
             transaction: EvmTransaction,
-            decoded_events: List[HistoryBaseEntry],
+            decoded_events: List[CryptoHistoryBaseEntry],
             all_logs: List[EthereumTxReceiptLog],  # pylint: disable=unused-argument
             action_items: List[ActionItem],  # pylint: disable=unused-argument
-    ) -> Tuple[Optional[HistoryBaseEntry], Optional[ActionItem]]:
+    ) -> Tuple[Optional[CryptoHistoryBaseEntry], Optional[ActionItem]]:
         amount_raw = hex_or_bytes_to_int(tx_log.data[0:32])
         interacted_address = hex_or_bytes_to_address(tx_log.topics[1])
 
@@ -91,7 +91,7 @@ class ConvexDecoder(DecoderInterface):
             token: EvmToken,  # pylint: disable=unused-argument
             tx_log: EthereumTxReceiptLog,
             transaction: EvmTransaction,
-            event: HistoryBaseEntry,
+            event: CryptoHistoryBaseEntry,
             action_items: List[ActionItem],  # pylint: disable=unused-argument
     ) -> bool:
         """Used for rewards paid with abracadabras. Problem is that the transfer event in this

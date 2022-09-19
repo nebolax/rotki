@@ -344,8 +344,8 @@ class YearnVaultHistory(NamedTuple):
 
 
 class YearnVaultBalance(NamedTuple):
-    underlying_token: Asset
-    vault_token: Asset
+    underlying_token: CryptoAsset
+    vault_token: CryptoAsset
     underlying_value: Balance
     vault_value: Balance
     roi: FVal

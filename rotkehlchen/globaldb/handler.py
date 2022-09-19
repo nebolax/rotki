@@ -20,7 +20,7 @@ from typing import (
 from unicodedata import decimal
 
 from rotkehlchen.assets.asset import Asset, CryptoAsset, EvmToken, FiatAsset, UnderlyingToken
-from rotkehlchen.assets.types import AssetData, AssetType
+from rotkehlchen.assets.types import NON_CRYPTO_ASSETS, AssetData, AssetType
 from rotkehlchen.chain.ethereum.types import string_to_evm_address
 from rotkehlchen.constants.assets import CONSTANT_ASSETS
 from rotkehlchen.constants.misc import NFT_DIRECTIVE
@@ -1456,19 +1456,8 @@ class GlobalDBHandler():
                 parent_token_identifier=identifier,
             )
 
-        return EvmToken.initialize(
-            address=string_to_evm_address(asset_data[2]),
-            chain=ChainID.deserialize_from_db(asset_data[3]),
-            token_kind=EvmTokenKind.deserialize_from_db(asset_data[4]),
-            decimals=asset_data[5],
-            name=asset_data[6],
-            symbol=asset_data[7],
-            started=asset_data[8],
-            forked=asset_data[9],
-            swapped_for=asset_data[10],
-            coingecko=asset_data[11],
-            cryptocompare=asset_data[12],
-            protocol=asset_data[13],
+        return EvmToken.deserialize_from_db(
+            entry=asset_data,
             underlying_tokens=underlying_tokens,
         )
 
@@ -1477,7 +1466,7 @@ class GlobalDBHandler():
         """
         Resolve an asset identifier to a crypto asset.
         May raise:
-        - UnknownAsset: If the identifier is not found
+        - UnknownAsset: If the identifier is not found or type is not a crypto asset
         """
         querystr = """
         SELECT A.identifier, A.type, A.name, B.symbol, B.started, B.forked, B.swapped_for,
@@ -1491,6 +1480,11 @@ class GlobalDBHandler():
             raise UnknownAsset(f"Couldn't find asset with identifier {identifier}")
 
         asset_type = AssetType.deserialize_from_db(asset_data[1])
+        if asset_type in NON_CRYPTO_ASSETS:
+            raise UnknownAsset(
+                f'Asset with identifier {identifier} has type {asset_type} which is '
+                'not a crypto asset.',
+            )
         return CryptoAsset.initialize(
             identifier=asset_data[0],
             asset_type=asset_type,
@@ -1530,62 +1524,22 @@ class GlobalDBHandler():
             asset_type=asset_type,
             name=asset_data[2],
             symbol=asset_data[3],
+            coingecko=asset_data[4],
+            cryptocompare=asset_data[5],
         )
+    
+    
 
-
-def _reload_constant_assets(globaldb: GlobalDBHandler) -> None:
-    """Reloads the details of the constant declared assets after reading from the DB"""
-    if len(CONSTANT_ASSETS) != 0:
-        identifiers = [x.identifier for x in CONSTANT_ASSETS]
-    else:
-        identifiers = None
-    db_data = globaldb.get_all_asset_data(mapping=True, serialized=False, specific_ids=identifiers)  # type: ignore  # noqa: E501
-
-    for entry in CONSTANT_ASSETS:
-        db_entry = db_data.get(entry.identifier)
-        if db_entry is None:
-            log.critical(
-                f'Constant declared asset with id {entry.identifier} has no corresponding DB entry'
-                f'. Skipping reload this asset from DB. Either old global DB or user deleted it.',
-            )
-            continue
-
-        # TODO: Perhaps don't use frozen dataclasses? This setattr everywhere is ugly
-        if entry.asset_type == AssetType.EVM_TOKEN:
-            if db_entry.asset_type != AssetType.EVM_TOKEN:
-                log.critical(
-                    f'Constant declared token with id {entry.identifier} has a '
-                    f'different type in the DB {db_entry.asset_type}. This should never happen. '
-                    f'Skipping reloading this asset from DB. Did user mess with the DB?',
-                )
-                continue
-            swapped_for = Asset(db_entry.swapped_for) if db_entry.swapped_for else None
-            object.__setattr__(entry, 'name', db_entry.name)
-            object.__setattr__(entry, 'symbol', db_entry.symbol)
-            object.__setattr__(entry, 'started', db_entry.started)
-            object.__setattr__(entry, 'swapped_for', swapped_for)
-            object.__setattr__(entry, 'cryptocompare', db_entry.cryptocompare)
-            object.__setattr__(entry, 'coingecko', db_entry.coingecko)
-            object.__setattr__(entry, 'evm_address', db_entry.address)
-            object.__setattr__(entry, 'decimals', db_entry.decimals)
-            object.__setattr__(entry, 'protocol', db_entry.protocol)
-            # TODO: Not changing underlying tokens at the moment since none
-            # of the constant ones have but perhaps in the future we should?
-        else:
-            if db_entry.asset_type == AssetType.EVM_TOKEN:
-                log.critical(
-                    f'Constant declared asset with id {entry.identifier} has an ethereum '
-                    f'token type in the DB {db_entry.asset_type}. This should never happen. '
-                    f'Skipping reloading this asset from DB. Did user mess with the DB?',
-                )
-                continue
-            swapped_for = Asset(db_entry.swapped_for) if db_entry.swapped_for else None
-            forked = Asset(db_entry.forked) if db_entry.forked else None
-            object.__setattr__(entry, 'name', db_entry.name)
-            object.__setattr__(entry, 'symbol', db_entry.symbol)
-            object.__setattr__(entry, 'asset_type', db_entry.asset_type)
-            object.__setattr__(entry, 'started', db_entry.started)
-            object.__setattr__(entry, 'forked', forked)
-            object.__setattr__(entry, 'swapped_for', swapped_for)
-            object.__setattr__(entry, 'cryptocompare', db_entry.cryptocompare)
-            object.__setattr__(entry, 'coingecko', db_entry.coingecko)
+    @staticmethod
+    def verify_identifier_existence(identifier: str) -> None:
+        """
+        Checks whether given identifier exists in globaldb and if it doesn't, raises an
+        UnknownAsset error.
+        """
+        with GlobalDBHandler().conn.read_ctx() as cursor:
+            found_identifier = cursor.execute(
+                'SELECT identifier FROM assets WHERE identifier=?',
+                (identifier,),
+            ).fetchone()
+        if found_identifier is None:
+            raise UnknownAsset(f'Identifier {identifier} is not known to rotki.')

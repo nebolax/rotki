@@ -45,7 +45,7 @@ from rotkehlchen.accounting.structures.types import (
     HistoryEventType,
 )
 from rotkehlchen.api.v1.schemas import TradeSchema
-from rotkehlchen.assets.asset import Asset, AssetWithSymbol, EvmToken
+from rotkehlchen.assets.asset import Asset, AssetWithSymbol, AssetWithSymbolAndCryptoOracles, EvmToken, FiatAsset
 from rotkehlchen.assets.resolver import AssetResolver
 from rotkehlchen.assets.spam_assets import update_spam_assets
 from rotkehlchen.assets.types import AssetType
@@ -386,13 +386,13 @@ class RestAPI():
         }
         return api_response(result=result_dict, status_code=HTTPStatus.NOT_FOUND)
 
-    def _get_exchange_rates(self, given_currencies: List[Asset]) -> Dict[str, Any]:
+    def _get_exchange_rates(self, given_currencies: List[AssetWithSymbolAndCryptoOracles]) -> Dict[str, Any]:
         currencies = given_currencies
-        fiat_currencies: List[AssetWithSymbol] = []
+        fiat_currencies: List[FiatAsset] = []
         asset_rates = {}
         for asset in currencies:
             if asset.is_fiat():
-                fiat_currencies.append(AssetWithSymbol(asset.identifier))
+                fiat_currencies.append(FiatAsset(asset.identifier))
                 continue
 
             usd_price = Inquirer().find_usd_price(asset)
@@ -416,7 +416,7 @@ class RestAPI():
 
         return _wrap_in_ok_result(process_result(asset_rates))
 
-    def get_exchange_rates(self, given_currencies: List[Asset], async_query: bool) -> Response:
+    def get_exchange_rates(self, given_currencies: List[AssetWithSymbolAndCryptoOracles], async_query: bool) -> Response:
         if len(given_currencies) == 0:
             return api_response(
                 wrap_in_fail_result('Empty list of currencies provided'),
@@ -612,7 +612,7 @@ class RestAPI():
                 'status_code': HTTPStatus.CONFLICT,
             }
 
-        balances: Dict[AssetWithSymbol, Balance] = {}
+        balances: Dict[AssetWithSymbolAndCryptoOracles, Balance] = {}
         for exchange in exchanges_list:
             result, msg = exchange.query_balances(ignore_cache=ignore_cache)
             if result is None:
@@ -783,13 +783,13 @@ class RestAPI():
             self,
             timestamp: Timestamp,
             location: Location,
-            base_asset: AssetWithSymbol,
-            quote_asset: AssetWithSymbol,
+            base_asset: Asset,
+            quote_asset: Asset,
             trade_type: TradeType,
             amount: AssetAmount,
             rate: Price,
             fee: Optional[Fee],
-            fee_currency: Optional[AssetWithSymbol],
+            fee_currency: Optional[Asset],
             link: Optional[str],
             notes: Optional[str],
     ) -> Response:
@@ -819,13 +819,13 @@ class RestAPI():
             trade_id: str,
             timestamp: Timestamp,
             location: Location,
-            base_asset: AssetWithSymbol,
-            quote_asset: AssetWithSymbol,
+            base_asset: Asset,
+            quote_asset: Asset,
             trade_type: TradeType,
             amount: AssetAmount,
             rate: Price,
             fee: Optional[Fee],
-            fee_currency: Optional[AssetWithSymbol],
+            fee_currency: Optional[Asset],
             link: Optional[str],
             notes: Optional[str],
     ) -> Response:
@@ -3258,7 +3258,7 @@ class RestAPI():
             status_code=HTTPStatus.OK,
         )
 
-    def refresh_asset_icon(self, asset: Asset) -> Response:
+    def refresh_asset_icon(self, asset: AssetWithSymbolAndCryptoOracles) -> Response:
         """Deletes an asset's icon from the cache and requeries it."""
         self.rotkehlchen.icon_manager.delete_icon(asset)
         is_success = self.rotkehlchen.icon_manager.query_coingecko_for_icon(asset)
@@ -3801,52 +3801,56 @@ class RestAPI():
             to_asset: Asset,
             price: Price,
     ) -> Response:
-        if from_asset.asset_type == AssetType.NFT:
+        try:
+            nft = from_asset.resolve_to_nft()
             return self._api_query_for_eth_module(
                 async_query=False,
                 module_name='nfts',
                 method='add_nft_with_price',
                 query_specific_balances_before=None,
-                from_asset=from_asset,
+                from_asset=nft,
                 to_asset=to_asset,
                 price=price,
             )
-        try:
-            GlobalDBHandler().add_manual_current_price(
-                from_asset=from_asset,
-                to_asset=to_asset,
-                price=price,
-            )
-        except InputError as e:
-            return api_response(
-                result=wrap_in_fail_result(message=str(e)),
-                status_code=HTTPStatus.CONFLICT,
-            )
+        except UnknownAsset:
+            try:
+                GlobalDBHandler().add_manual_current_price(
+                    from_asset=from_asset,
+                    to_asset=to_asset,
+                    price=price,
+                )
+            except InputError as e:
+                return api_response(
+                    result=wrap_in_fail_result(message=str(e)),
+                    status_code=HTTPStatus.CONFLICT,
+                )
 
-        Inquirer().remove_cached_current_price_entry(cache_key=(from_asset, to_asset))
-        return api_response(result=OK_RESULT)
+            Inquirer().remove_cached_current_price_entry(cache_key=(from_asset, to_asset))
+            return api_response(result=OK_RESULT)
 
     def delete_manual_current_price(
             self,
             asset: Asset,
     ) -> Response:
-        if asset.asset_type == AssetType.NFT:
+        try:
+            nft = asset.resolve_to_nft()
             return self._api_query_for_eth_module(
                 async_query=False,
                 module_name='nfts',
                 method='delete_price_for_nft',
                 query_specific_balances_before=None,
-                asset=asset,
+                asset=nft,
             )
-        try:
-            GlobalDBHandler().delete_manual_current_price(asset=asset)
-        except InputError as e:
-            return api_response(
-                result=wrap_in_fail_result(message=str(e)),
-                status_code=HTTPStatus.CONFLICT,
-            )
+        except UnknownAsset:
+            try:
+                GlobalDBHandler().delete_manual_current_price(asset=asset)
+            except InputError as e:
+                return api_response(
+                    result=wrap_in_fail_result(message=str(e)),
+                    status_code=HTTPStatus.CONFLICT,
+                )
 
-        return api_response(result=OK_RESULT)
+            return api_response(result=OK_RESULT)
 
     def get_database_info(self) -> Response:
         globaldb_schema_version = GlobalDBHandler().get_schema_version()

@@ -306,6 +306,9 @@ class AssetsUpdater():
             text: str,
             conflicts: Optional[Dict[Asset, Literal['remote', 'local']]],
     ) -> None:
+        # TODO: don't forget to think about asset updates. We probably need here a method smth like
+        # resolve_to_its_instance which will automatically pick the correct type and create the
+        # corresponding instance. But need to think and check how it works.
         lines = text.splitlines()
         for action, full_insert in zip(*[iter(lines)] * 2):
             if full_insert == '*':
@@ -322,7 +325,7 @@ class AssetsUpdater():
 
             local_asset: Optional[Asset] = None
             try:
-                local_asset = Asset(remote_asset_data.identifier)
+                local_asset = DoItProperly(remote_asset_data.identifier)
             except UnknownAsset:
                 pass
 

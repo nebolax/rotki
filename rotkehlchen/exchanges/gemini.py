@@ -25,7 +25,7 @@ import requests
 
 from rotkehlchen.accounting.ledger_actions import LedgerAction
 from rotkehlchen.accounting.structures.balance import Balance
-from rotkehlchen.assets.asset import AssetWithSymbol
+from rotkehlchen.assets.asset import AssetWithSymbol, AssetWithSymbolAndCryptoOracles
 from rotkehlchen.assets.converters import asset_from_gemini
 from rotkehlchen.constants.misc import ZERO
 from rotkehlchen.constants.timing import GLOBAL_REQUESTS_TIMEOUT, QUERY_RETRY_TIMES
@@ -64,7 +64,7 @@ class GeminiPermissionError(Exception):
     pass
 
 
-def gemini_symbol_to_base_quote(symbol: str) -> Tuple[AssetWithSymbol, AssetWithSymbol]:
+def gemini_symbol_to_base_quote(symbol: str) -> Tuple[AssetWithSymbolAndCryptoOracles, AssetWithSymbolAndCryptoOracles]:
     """Turns a gemini symbol product into a base/quote asset tuple
 
     - Can raise UnprocessableTradePair if symbol is in unexpected format

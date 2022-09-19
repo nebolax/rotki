@@ -1,6 +1,6 @@
 from typing import Any, Dict, List, Optional, Tuple
 
-from rotkehlchen.accounting.structures.base import HistoryBaseEntry
+from rotkehlchen.accounting.structures.base import CryptoHistoryBaseEntry
 from rotkehlchen.accounting.structures.types import HistoryEventSubType, HistoryEventType
 from rotkehlchen.chain.ethereum.decoding.interfaces import DecoderInterface
 from rotkehlchen.chain.ethereum.decoding.structures import ActionItem
@@ -23,10 +23,10 @@ class ZksyncDecoder(DecoderInterface):  # lgtm[py/missing-call-to-init]
             self,
             tx_log: EthereumTxReceiptLog,
             transaction: EvmTransaction,  # pylint: disable=unused-argument
-            decoded_events: List[HistoryBaseEntry],  # pylint: disable=unused-argument
+            decoded_events: List[CryptoHistoryBaseEntry],  # pylint: disable=unused-argument
             all_logs: List[EthereumTxReceiptLog],  # pylint: disable=unused-argument
             action_items: List[ActionItem],  # pylint: disable=unused-argument
-    ) -> Tuple[Optional[HistoryBaseEntry], Optional[ActionItem]]:
+    ) -> Tuple[Optional[CryptoHistoryBaseEntry], Optional[ActionItem]]:
         if tx_log.topics[0] == DEPOSIT:
             return self._decode_deposit(tx_log, transaction, decoded_events, all_logs, action_items)  # noqa: E501
 
@@ -36,10 +36,10 @@ class ZksyncDecoder(DecoderInterface):  # lgtm[py/missing-call-to-init]
             self,
             tx_log: EthereumTxReceiptLog,
             transaction: EvmTransaction,  # pylint: disable=unused-argument
-            decoded_events: List[HistoryBaseEntry],  # pylint: disable=unused-argument
+            decoded_events: List[CryptoHistoryBaseEntry],  # pylint: disable=unused-argument
             all_logs: List[EthereumTxReceiptLog],  # pylint: disable=unused-argument
             action_items: List[ActionItem],  # pylint: disable=unused-argument
-    ) -> Tuple[Optional[HistoryBaseEntry], Optional[ActionItem]]:
+    ) -> Tuple[Optional[CryptoHistoryBaseEntry], Optional[ActionItem]]:
         """Match a zksync deposit with the transfer to decode it
 
         TODO: This is now quite bad. We don't use the token id of zksync as we should.

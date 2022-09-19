@@ -1,5 +1,5 @@
 from typing import TYPE_CHECKING, List
-from rotkehlchen.accounting.structures.base import HistoryBaseEntry
+from rotkehlchen.accounting.structures.base import CryptoHistoryBaseEntry
 from rotkehlchen.accounting.structures.types import HistoryEventSubType, HistoryEventType
 from rotkehlchen.assets.utils import get_or_create_evm_token
 from rotkehlchen.chain.ethereum.decoding.utils import maybe_reshuffle_events
@@ -19,7 +19,7 @@ if TYPE_CHECKING:
 
 def decode_uniswap_v2_like_swap(
         tx_log: EthereumTxReceiptLog,
-        decoded_events: List[HistoryBaseEntry],
+        decoded_events: List[CryptoHistoryBaseEntry],
         transaction: EvmTransaction,
         counterparty: str,
         database: 'DBHandler',

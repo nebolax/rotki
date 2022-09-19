@@ -185,61 +185,37 @@ class UniswapOracle(CurrentPriceOracleInterface, CacheableMixIn):
 
     def get_price(
         self,
-        from_asset: Asset,
-        to_asset: Asset,
+        from_token: EvmToken,
+        to_token: EvmToken,
         block_identifier: BlockIdentifier,
     ) -> Price:
         """
         Return the price of from_asset to to_asset at the block block_identifier.
-        External oracles are used if non eth tokens are used.
 
         Can raise:
-        - PriceQueryUnsupportedAsset
         - DefiPoolError
         - RemoteError
         """
         log.debug(
-            f'Searching price for {from_asset} to {to_asset} at '
+            f'Searching price for {from_token} to {to_token} at '
             f'{block_identifier!r} with {self.name}',
         )
 
         # Uniswap V2 and V3 use in their contracts WETH instead of ETH
-        if from_asset == A_ETH:
-            from_asset = A_WETH
-        if to_asset == A_ETH:
-            to_asset = A_WETH
+        if from_token == A_ETH:
+            from_token = A_WETH
+        if to_token == A_ETH:
+            to_token = A_WETH
 
-        if from_asset == to_asset:
+        if from_token == to_token:
             return Price(ONE)
 
-        if not (from_asset.is_evm_token() and to_asset.is_evm_token()):
-            raise PriceQueryUnsupportedAsset(
-                f'Either {from_asset} or {to_asset} arent ethereum tokens for the uniswap oracle',
-            )
-
-        # Could be that we are dealing with ethereum tokens as instances of Asset instead of
-        # EvmToken, handle the conversion
-        from_asset_raw: Union[Asset, EvmToken] = from_asset
-        to_asset_raw: Union[Asset, EvmToken] = to_asset
-        if not isinstance(from_asset, EvmToken):
-            try:
-                from_as_token = EvmToken(from_asset.identifier)
-            except UnknownAsset as e:
-                raise PriceQueryUnsupportedAsset(f'Unsupported asset for uniswap {from_asset_raw}') from e  # noqa: E501
-            from_asset = from_as_token
-        if not isinstance(to_asset, EvmToken):
-            try:
-                to_as_token = EvmToken(to_asset.identifier)
-            except UnknownAsset as e:
-                raise PriceQueryUnsupportedAsset(f'Unsupported asset for uniswap {to_asset_raw}') from e  # noqa: E501
-            to_asset = to_as_token
-
-        route = self.find_route(from_asset, to_asset)
+        route = self.find_route(from_token, to_token)
 
         if len(route) == 0:
-            log.debug(f'Failed to find uniswap price for {from_asset} to {to_asset}')
+            log.debug(f'Failed to find uniswap price for {from_token} to {to_token}')
             return Price(ZERO)
-        log.debug(f'Found price route {route} for {from_asset} to {to_asset} using {self.name}')
+        log.debug(f'Found price route {route} for {from_token} to {to_token} using {self.name}')
 
         prices_and_tokens = []
         for step in route:
@@ -252,7 +228,7 @@ class UniswapOracle(CurrentPriceOracleInterface, CacheableMixIn):
             )
 
         # Looking at which one is token0 and token1 we need to see if we need price or 1/price
-        if prices_and_tokens[0].token_0 != from_asset:
+        if prices_and_tokens[0].token_0 != from_token:
             prices_and_tokens[0] = prices_and_tokens[0].swap_tokens()
 
         # For the possible intermediate steps also make sure that we use the correct price
@@ -261,7 +237,7 @@ class UniswapOracle(CurrentPriceOracleInterface, CacheableMixIn):
                 prices_and_tokens[pos - 1] = prices_and_tokens[pos - 1].swap_tokens()
 
         # Finally for the tail query the price
-        if prices_and_tokens[-1].token_1 != to_asset:
+        if prices_and_tokens[-1].token_1 != to_token:
             prices_and_tokens[-1] = prices_and_tokens[-1].swap_tokens()
 
         price = FVal(reduce(mul, [item.price for item in prices_and_tokens], 1))
@@ -278,10 +254,16 @@ class UniswapOracle(CurrentPriceOracleInterface, CacheableMixIn):
             to_asset = A_USDC
         elif from_asset == A_USD:
             from_asset = A_USDC
+        
+        try:
+            to_asset = to_asset.resolve_to_evm_token()
+            from_asset = from_asset.resolve_to_evm_token()
+        except UnknownAsset as e:
+            raise PriceQueryUnsupportedAsset(e.asset_name) from e
 
         return self.get_price(
-            from_asset=from_asset,
-            to_asset=to_asset,
+            from_token=from_asset,
+            to_token=to_asset,
             block_identifier='latest',
         )
 

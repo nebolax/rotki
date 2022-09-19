@@ -1,7 +1,7 @@
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
 
 from rotkehlchen.accounting.structures.balance import Balance
-from rotkehlchen.accounting.structures.base import HistoryBaseEntry
+from rotkehlchen.accounting.structures.base import CryptoHistoryBaseEntry
 from rotkehlchen.accounting.structures.types import HistoryEventSubType, HistoryEventType
 from rotkehlchen.chain.ethereum.decoding.interfaces import DecoderInterface
 from rotkehlchen.chain.ethereum.decoding.structures import ActionItem
@@ -37,9 +37,9 @@ class Oneinchv1Decoder(DecoderInterface):  # lgtm[py/missing-call-to-init]
             self,
             tx_log: EthereumTxReceiptLog,
             transaction: EvmTransaction,  # pylint: disable=unused-argument
-            decoded_events: List[HistoryBaseEntry],  # pylint: disable=unused-argument
+            decoded_events: List[CryptoHistoryBaseEntry],  # pylint: disable=unused-argument
             all_logs: List[EthereumTxReceiptLog],  # pylint: disable=unused-argument
-    ) -> Tuple[Optional[HistoryBaseEntry], Optional[ActionItem]]:
+    ) -> Tuple[Optional[CryptoHistoryBaseEntry], Optional[ActionItem]]:
         sender = hex_or_bytes_to_address(tx_log.topics[1])
         if not self.base.is_tracked(sender):
             return None, None
@@ -91,9 +91,9 @@ class Oneinchv1Decoder(DecoderInterface):  # lgtm[py/missing-call-to-init]
             self,
             tx_log: EthereumTxReceiptLog,
             transaction: EvmTransaction,
-            decoded_events: List[HistoryBaseEntry],  # pylint: disable=unused-argument
+            decoded_events: List[CryptoHistoryBaseEntry],  # pylint: disable=unused-argument
             all_logs: List[EthereumTxReceiptLog],  # pylint: disable=unused-argument
-    ) -> Tuple[Optional[HistoryBaseEntry], Optional[ActionItem]]:
+    ) -> Tuple[Optional[CryptoHistoryBaseEntry], Optional[ActionItem]]:
         """We use the Swapped event to get the fee kept by 1inch"""
         to_token_address = hex_or_bytes_to_address(tx_log.topics[2])
         to_asset = ethaddress_to_asset(to_token_address)
@@ -120,7 +120,7 @@ class Oneinchv1Decoder(DecoderInterface):  # lgtm[py/missing-call-to-init]
 
         # And now create a new event for the fee
         fee_amount = asset_normalized_value(fee_raw, to_asset)
-        fee_event = HistoryBaseEntry(
+        fee_event = CryptoHistoryBaseEntry(
             event_identifier=transaction.tx_hash,
             sequence_index=self.base.get_sequence_index(tx_log),
             timestamp=ts_sec_to_ms(transaction.timestamp),
@@ -139,10 +139,10 @@ class Oneinchv1Decoder(DecoderInterface):  # lgtm[py/missing-call-to-init]
             self,
             tx_log: EthereumTxReceiptLog,
             transaction: EvmTransaction,
-            decoded_events: List[HistoryBaseEntry],  # pylint: disable=unused-argument
+            decoded_events: List[CryptoHistoryBaseEntry],  # pylint: disable=unused-argument
             all_logs: List[EthereumTxReceiptLog],  # pylint: disable=unused-argument
             action_items: Optional[List[ActionItem]],  # pylint: disable=unused-argument
-    ) -> Tuple[Optional[HistoryBaseEntry], Optional[ActionItem]]:
+    ) -> Tuple[Optional[CryptoHistoryBaseEntry], Optional[ActionItem]]:
         if tx_log.topics[0] == HISTORY:
             return self._decode_history(tx_log=tx_log, transaction=transaction, decoded_events=decoded_events, all_logs=all_logs)  # noqa: E501
         if tx_log.topics[0] == SWAPPED:

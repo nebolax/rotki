@@ -5,7 +5,7 @@ from typing import Any, Dict, List, Tuple
 
 import gevent
 
-from rotkehlchen.accounting.structures.base import HistoryBaseEntry
+from rotkehlchen.accounting.structures.base import CryptoHistoryBaseEntry, HistoryBaseEntry
 from rotkehlchen.chain.ethereum.constants import ETHERSCAN_NODE
 from rotkehlchen.chain.ethereum.decoding.decoder import EVMTransactionDecoder
 from rotkehlchen.chain.ethereum.manager import EthereumManager, NodeName
@@ -293,7 +293,7 @@ def get_decoded_events_of_transaction(
         database: DBHandler,
         msg_aggregator: MessagesAggregator,
         tx_hash: EVMTxHash,
-) -> List[HistoryBaseEntry]:
+) -> List[CryptoHistoryBaseEntry]:
     """A convenience function to ask get transaction, receipt and decoded event for a tx_hash"""
     transactions = EthTransactions(ethereum=ethereum_manager, database=database)
     with database.user_write() as cursor:

@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Dict, List, Optional, Tuple
 from gevent.lock import Semaphore
 
 from rotkehlchen.accounting.structures.balance import Balance, BalanceSheet
-from rotkehlchen.assets.asset import Asset, EvmToken
+from rotkehlchen.assets.asset import Asset, CryptoAsset, EvmToken
 from rotkehlchen.chain.ethereum.graph import SUBGRAPH_REMOTE_ERROR_MSG
 from rotkehlchen.constants.ethereum import (
     MAX_BLOCKTIME_CACHE,
@@ -105,7 +105,7 @@ class YearnVaultsV2(EthereumModule):
 
     def _get_single_addr_balance(
             self,
-            defi_balances: Dict[Asset, Balance],
+            defi_balances: Dict[CryptoAsset, Balance],
             roi_cache: Dict[str, FVal],
             pps_cache: Dict[str, int],  # price per share
     ) -> Dict[ChecksumEvmAddress, YearnVaultBalance]:

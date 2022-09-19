@@ -1,7 +1,7 @@
 from typing import TYPE_CHECKING, Optional, Tuple
 
 from rotkehlchen.accounting.structures.balance import Balance
-from rotkehlchen.accounting.structures.base import HistoryBaseEntry
+from rotkehlchen.accounting.structures.base import CryptoHistoryBaseEntry
 from rotkehlchen.accounting.structures.types import HistoryEventSubType, HistoryEventType
 from rotkehlchen.constants import ONE
 from rotkehlchen.types import ChecksumEvmAddress
@@ -103,7 +103,7 @@ class BaseDecoderTools():
             token: EvmToken,
             tx_log: EthereumTxReceiptLog,
             transaction: EvmTransaction,
-    ) -> Optional[HistoryBaseEntry]:
+    ) -> Optional[CryptoHistoryBaseEntry]:
         """
         Caller should know this is a transfer of either an ERC20 or an ERC721 token.
         Call this method to decode it.
@@ -146,7 +146,7 @@ class BaseDecoderTools():
             else:
                 notes = f'{verb} {token.name} with id {token_id} from {counterparty} to {location_label}'  # noqa: E501
 
-        return HistoryBaseEntry(
+        return CryptoHistoryBaseEntry(
             event_identifier=transaction.tx_hash,
             sequence_index=self.get_sequence_index(tx_log),
             timestamp=ts_sec_to_ms(transaction.timestamp),

@@ -1,6 +1,8 @@
 from enum import Enum
 from typing import TYPE_CHECKING, List, Literal, NamedTuple, Optional, Protocol
 
+from rotkehlchen.accounting.structures.base import CryptoHistoryBaseEntry
+
 if TYPE_CHECKING:
     from rotkehlchen.accounting.pot import AccountingPot
     from rotkehlchen.accounting.structures.base import HistoryBaseEntry
@@ -11,8 +13,8 @@ class AccountantCallback(Protocol):
     def __call__(
             self,
             pot: 'AccountingPot',
-            event: 'HistoryBaseEntry',
-            other_events: List['HistoryBaseEntry'],
+            event: 'CryptoHistoryBaseEntry',
+            other_events: List['CryptoHistoryBaseEntry'],
     ) -> None:
         ...
 

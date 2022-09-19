@@ -36,6 +36,9 @@ class AssetType(DBEnumMixIn):
     NFT = 26
 
 
+NON_CRYPTO_ASSETS = {AssetType.FIAT, AssetType.NFT}
+
+
 class AssetData(NamedTuple):
     """Data of an asset. Keep in sync with assets/asset.py"""
     identifier: str

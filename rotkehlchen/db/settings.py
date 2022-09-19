@@ -2,7 +2,7 @@ import json
 from typing import Any, Dict, List, NamedTuple, Optional, Union
 
 from rotkehlchen.accounting.ledger_actions import LedgerActionType
-from rotkehlchen.assets.asset import Asset
+from rotkehlchen.assets.asset import Asset, AssetWithSymbolAndCryptoOracles
 from rotkehlchen.constants.assets import A_USD
 from rotkehlchen.constants.timing import YEAR_IN_SECONDS
 from rotkehlchen.db.utils import str_to_bool
@@ -104,7 +104,7 @@ class DBSettings(NamedTuple):
     include_gas_costs: bool = DEFAULT_INCLUDE_GAS_COSTS
     ksm_rpc_endpoint: str = 'http://localhost:9933'
     dot_rpc_endpoint: str = ''  # same as kusama -- must be set by user
-    main_currency: Asset = DEFAULT_MAIN_CURRENCY
+    main_currency: AssetWithSymbolAndCryptoOracles = DEFAULT_MAIN_CURRENCY
     date_display_format: str = DEFAULT_DATE_DISPLAY_FORMAT
     last_balance_save: Timestamp = Timestamp(0)
     submit_usage_analytics: bool = DEFAULT_SUBMIT_USAGE_ANALYTICS
@@ -149,7 +149,7 @@ class ModifiableDBSettings(NamedTuple):
     include_gas_costs: Optional[bool] = None
     ksm_rpc_endpoint: Optional[str] = None
     dot_rpc_endpoint: Optional[str] = None
-    main_currency: Optional[Asset] = None
+    main_currency: Optional[AssetWithSymbolAndCryptoOracles] = None
     date_display_format: Optional[str] = None
     submit_usage_analytics: Optional[bool] = None
     active_modules: Optional[List[ModuleName]] = None
@@ -225,7 +225,7 @@ def db_settings_from_dict(
 
                 specified_args[key] = value
         elif key == 'main_currency':
-            specified_args[key] = Asset(str(value))
+            specified_args[key] = AssetWithSymbolAndCryptoOracles(str(value))  # asset_type
         elif key in TIMESTAMP_KEYS:
             specified_args[key] = Timestamp(int(value))
         elif key == 'active_modules':

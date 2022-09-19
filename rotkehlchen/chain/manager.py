@@ -22,7 +22,7 @@ from gevent.lock import Semaphore
 from web3.exceptions import BadFunctionCallOutput
 
 from rotkehlchen.accounting.structures.balance import Balance, BalanceSheet
-from rotkehlchen.assets.asset import Asset, EvmToken
+from rotkehlchen.assets.asset import Asset, CryptoAsset, EvmToken
 from rotkehlchen.chain.bitcoin import get_bitcoin_addresses_balances
 from rotkehlchen.chain.bitcoin.bch import get_bitcoin_cash_addresses_balances
 from rotkehlchen.chain.bitcoin.bch.utils import force_address_to_legacy_address
@@ -1537,7 +1537,7 @@ class ChainManager(CacheableMixIn, LockableQueryMixIn):
         )
 
     @cache_response_timewise()
-    def get_loopring_balances(self) -> Dict[Asset, Balance]:
+    def get_loopring_balances(self) -> Dict[CryptoAsset, Balance]:
         """Query loopring balances if the module is activated
 
         May raise:
@@ -1553,7 +1553,7 @@ class ChainManager(CacheableMixIn, LockableQueryMixIn):
 
         # Now that we have balances for the addresses we need to aggregate the
         # assets in the different addresses
-        aggregated_balances: Dict[Asset, Balance] = defaultdict(Balance)
+        aggregated_balances: Dict[CryptoAsset, Balance] = defaultdict(Balance)
         for _, assets in balances.items():
             for asset, balance in assets.items():
                 aggregated_balances[asset] += balance

@@ -24,7 +24,7 @@ from substrateinterface import SubstrateInterface
 from substrateinterface.exceptions import BlockNotFound, SubstrateRequestException
 from websocket import WebSocketException
 
-from rotkehlchen.assets.asset import Asset
+from rotkehlchen.assets.asset import Asset, CryptoAsset
 from rotkehlchen.constants.misc import ZERO
 from rotkehlchen.constants.timing import DEFAULT_TIMEOUT_TUPLE
 from rotkehlchen.errors.asset import UnknownAsset
@@ -65,7 +65,7 @@ class SubstrateChainProperties(NamedTuple):
     https://github.com/paritytech/substrate/wiki/External-Address-Format-(SS58)
     """
     ss58_format: int
-    token: Asset  # from instantiating Asset with 'tokenSymbol'
+    token: CryptoAsset
     token_decimals: FVal
 
 
@@ -388,6 +388,8 @@ class SubstrateManager():
         try:
             chain_properties = SubstrateChainProperties(
                 ss58_format=properties['ss58Format'],
+                # TODO: Investigate. Perhaps is broken right now since tokenSymbol is used
+                # while identifier (which is in eip155 format) is used for initialization
                 token=Asset(properties['tokenSymbol']),
                 token_decimals=FVal(properties['tokenDecimals']),
             )

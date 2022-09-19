@@ -1,7 +1,7 @@
 import logging
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
 
-from rotkehlchen.accounting.structures.base import HistoryBaseEntry
+from rotkehlchen.accounting.structures.base import CryptoHistoryBaseEntry
 from rotkehlchen.accounting.structures.types import HistoryEventSubType, HistoryEventType
 from rotkehlchen.chain.ethereum.abi import decode_event_data_abi_str
 from rotkehlchen.chain.ethereum.decoding.interfaces import DecoderInterface
@@ -46,10 +46,10 @@ class EnsDecoder(DecoderInterface, CustomizableDateMixin):  # lgtm[py/missing-ca
             self,
             tx_log: EthereumTxReceiptLog,
             transaction: EvmTransaction,  # pylint: disable=unused-argument
-            decoded_events: List[HistoryBaseEntry],  # pylint: disable=unused-argument
+            decoded_events: List[CryptoHistoryBaseEntry],  # pylint: disable=unused-argument
             all_logs: List[EthereumTxReceiptLog],  # pylint: disable=unused-argument
             action_items: Optional[List[ActionItem]],  # pylint: disable=unused-argument
-    ) -> Tuple[Optional[HistoryBaseEntry], Optional[ActionItem]]:
+    ) -> Tuple[Optional[CryptoHistoryBaseEntry], Optional[ActionItem]]:
         if tx_log.topics[0] != NAME_RENEWED:
             return None, None
 

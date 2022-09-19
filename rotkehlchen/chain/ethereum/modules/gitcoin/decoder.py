@@ -1,7 +1,7 @@
 import logging
 from typing import TYPE_CHECKING, Callable, List
 
-from rotkehlchen.accounting.structures.base import HistoryBaseEntry
+from rotkehlchen.accounting.structures.base import CryptoHistoryBaseEntry
 from rotkehlchen.accounting.structures.types import HistoryEventSubType, HistoryEventType
 from rotkehlchen.assets.asset import EvmToken
 from rotkehlchen.chain.ethereum.decoding.interfaces import DecoderInterface
@@ -36,7 +36,7 @@ class GitcoinDecoder(DecoderInterface):  # lgtm[py/missing-call-to-init]
             token: EvmToken,  # pylint: disable=unused-argument
             tx_log: EthereumTxReceiptLog,  # pylint: disable=unused-argument
             transaction: EvmTransaction,
-            event: HistoryBaseEntry,
+            event: CryptoHistoryBaseEntry,
             action_items: List[ActionItem],  # pylint: disable=unused-argument
     ) -> bool:
         if transaction.to_address not in (

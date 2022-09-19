@@ -1,7 +1,7 @@
 import logging
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
 
-from rotkehlchen.accounting.structures.base import HistoryBaseEntry
+from rotkehlchen.accounting.structures.base import CryptoHistoryBaseEntry
 from rotkehlchen.accounting.structures.types import HistoryEventSubType, HistoryEventType
 from rotkehlchen.assets.asset import EvmToken
 from rotkehlchen.assets.utils import symbol_to_asset_or_token
@@ -44,9 +44,9 @@ class CompoundDecoder(DecoderInterface):  # lgtm[py/missing-call-to-init]
             self,
             transaction: EvmTransaction,
             tx_log: EthereumTxReceiptLog,
-            decoded_events: List[HistoryBaseEntry],
+            decoded_events: List[CryptoHistoryBaseEntry],
             compound_token: EvmToken,
-    ) -> Tuple[Optional[HistoryBaseEntry], Optional[ActionItem]]:
+    ) -> Tuple[Optional[CryptoHistoryBaseEntry], Optional[ActionItem]]:
         minter = hex_or_bytes_to_address(tx_log.data[0:32])
         if not self.base.is_tracked(minter):
             return None, None
@@ -89,9 +89,9 @@ class CompoundDecoder(DecoderInterface):  # lgtm[py/missing-call-to-init]
     def _decode_redeem(
             self,
             tx_log: EthereumTxReceiptLog,
-            decoded_events: List[HistoryBaseEntry],
+            decoded_events: List[CryptoHistoryBaseEntry],
             compound_token: EvmToken,
-    ) -> Tuple[Optional[HistoryBaseEntry], Optional[ActionItem]]:
+    ) -> Tuple[Optional[CryptoHistoryBaseEntry], Optional[ActionItem]]:
         redeemer = hex_or_bytes_to_address(tx_log.data[0:32])
         if not self.base.is_tracked(redeemer):
             return None, None
@@ -99,6 +99,7 @@ class CompoundDecoder(DecoderInterface):  # lgtm[py/missing-call-to-init]
         redeem_amount_raw = hex_or_bytes_to_int(tx_log.data[32:64])
         redeem_tokens_raw = hex_or_bytes_to_int(tx_log.data[64:96])
         underlying_token = symbol_to_asset_or_token(compound_token.symbol[1:])
+        # TODO: probably asset_normalized_value should be / have a companion with more cpecific type
         redeem_amount = asset_normalized_value(redeem_amount_raw, underlying_token)
         redeem_tokens = token_normalized_value(redeem_tokens_raw, compound_token)
         out_event = in_event = None
@@ -124,11 +125,11 @@ class CompoundDecoder(DecoderInterface):  # lgtm[py/missing-call-to-init]
             self,
             tx_log: EthereumTxReceiptLog,
             transaction: EvmTransaction,
-            decoded_events: List[HistoryBaseEntry],
+            decoded_events: List[CryptoHistoryBaseEntry],
             all_logs: List[EthereumTxReceiptLog],  # pylint: disable=unused-argument
             action_items: Optional[List[ActionItem]],  # pylint: disable=unused-argument
             compound_token: EvmToken,
-    ) -> Tuple[Optional[HistoryBaseEntry], Optional[ActionItem]]:
+    ) -> Tuple[Optional[CryptoHistoryBaseEntry], Optional[ActionItem]]:
         if tx_log.topics[0] == MINT_COMPOUND_TOKEN:
             log.debug(f'Hash: {transaction.tx_hash.hex()}')
             return self._decode_mint(transaction=transaction, tx_log=tx_log, decoded_events=decoded_events, compound_token=compound_token)  # noqa: E501
@@ -142,10 +143,10 @@ class CompoundDecoder(DecoderInterface):  # lgtm[py/missing-call-to-init]
             self,
             tx_log: EthereumTxReceiptLog,
             transaction: EvmTransaction,  # pylint: disable=unused-argument
-            decoded_events: List[HistoryBaseEntry],  # pylint: disable=unused-argument
+            decoded_events: List[CryptoHistoryBaseEntry],  # pylint: disable=unused-argument
             all_logs: List[EthereumTxReceiptLog],  # pylint: disable=unused-argument
             action_items: Optional[List[ActionItem]],  # pylint: disable=unused-argument
-    ) -> Tuple[Optional[HistoryBaseEntry], Optional[ActionItem]]:
+    ) -> Tuple[Optional[CryptoHistoryBaseEntry], Optional[ActionItem]]:
         """Example tx:
         https://etherscan.io/tx/0x024bd402420c3ba2f95b875f55ce2a762338d2a14dac4887b78174254c9ab807
         """

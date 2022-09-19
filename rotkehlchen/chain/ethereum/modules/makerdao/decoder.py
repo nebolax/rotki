@@ -1,7 +1,7 @@
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
 
 from rotkehlchen.accounting.structures.balance import Balance
-from rotkehlchen.accounting.structures.base import HistoryBaseEntry
+from rotkehlchen.accounting.structures.base import CryptoHistoryBaseEntry
 from rotkehlchen.accounting.structures.types import HistoryEventSubType, HistoryEventType
 from rotkehlchen.assets.asset import CryptoAsset
 from rotkehlchen.chain.ethereum.decoding.constants import ERC20_OR_ERC721_TRANSFER
@@ -164,12 +164,12 @@ class MakerdaoDecoder(DecoderInterface, HasDSProxy):  # lgtm[py/missing-call-to-
             self,
             tx_log: EthereumTxReceiptLog,
             transaction: EvmTransaction,  # pylint: disable=unused-argument
-            decoded_events: List[HistoryBaseEntry],
+            decoded_events: List[CryptoHistoryBaseEntry],
             all_logs: List[EthereumTxReceiptLog],  # pylint: disable=unused-argument
             action_items: List[ActionItem],  # pylint: disable=unused-argument
             vault_asset: CryptoAsset,
             vault_type: str,
-    ) -> Tuple[Optional[HistoryBaseEntry], Optional[ActionItem]]:
+    ) -> Tuple[Optional[CryptoHistoryBaseEntry], Optional[ActionItem]]:
         if tx_log.topics[0] == GENERIC_JOIN:
             raw_amount = hex_or_bytes_to_int(tx_log.topics[3])
             amount = asset_normalized_value(
@@ -210,10 +210,10 @@ class MakerdaoDecoder(DecoderInterface, HasDSProxy):  # lgtm[py/missing-call-to-
             self,
             tx_log: EthereumTxReceiptLog,
             transaction: EvmTransaction,  # pylint: disable=unused-argument
-            decoded_events: List[HistoryBaseEntry],  # pylint: disable=unused-argument
+            decoded_events: List[CryptoHistoryBaseEntry],  # pylint: disable=unused-argument
             all_logs: List[EthereumTxReceiptLog],  # pylint: disable=unused-argument
             action_items: List[ActionItem],  # pylint: disable=unused-argument
-    ) -> Tuple[Optional[HistoryBaseEntry], Optional[ActionItem]]:
+    ) -> Tuple[Optional[CryptoHistoryBaseEntry], Optional[ActionItem]]:
         if tx_log.topics[0] == GENERIC_JOIN:
             join_user_address = hex_or_bytes_to_address(tx_log.topics[2])
             raw_amount = hex_or_bytes_to_int(tx_log.topics[3])
@@ -243,10 +243,10 @@ class MakerdaoDecoder(DecoderInterface, HasDSProxy):  # lgtm[py/missing-call-to-
             self,
             tx_log: EthereumTxReceiptLog,
             transaction: EvmTransaction,  # pylint: disable=unused-argument
-            decoded_events: List[HistoryBaseEntry],
+            decoded_events: List[CryptoHistoryBaseEntry],
             all_logs: List[EthereumTxReceiptLog],
             action_items: List[ActionItem],  # pylint: disable=unused-argument
-    ) -> Tuple[Optional[HistoryBaseEntry], Optional[ActionItem]]:
+    ) -> Tuple[Optional[CryptoHistoryBaseEntry], Optional[ActionItem]]:
         if tx_log.topics[0] == POT_JOIN:
             potjoin_user_address = hex_or_bytes_to_address(tx_log.topics[1])
             user = self._get_address_or_proxy(potjoin_user_address)
@@ -330,10 +330,10 @@ class MakerdaoDecoder(DecoderInterface, HasDSProxy):  # lgtm[py/missing-call-to-
             self,
             tx_log: EthereumTxReceiptLog,
             transaction: EvmTransaction,
-            decoded_events: List[HistoryBaseEntry],  # pylint: disable=unused-argument
+            decoded_events: List[CryptoHistoryBaseEntry],  # pylint: disable=unused-argument
             all_logs: List[EthereumTxReceiptLog],  # pylint: disable=unused-argument
             action_items: List[ActionItem],  # pylint: disable=unused-argument
-    ) -> Tuple[Optional[HistoryBaseEntry], Optional[ActionItem]]:
+    ) -> Tuple[Optional[CryptoHistoryBaseEntry], Optional[ActionItem]]:
         if tx_log.topics[0] == b'%\x9b0\xca9\x88\\m\x80\x1a\x0b]\xbc\x98\x86@\xf3\xc2^/7S\x1f\xe18\xc5\xc5\xaf\x89U\xd4\x1b':  # noqa: E501
             owner_address = hex_or_bytes_to_address(tx_log.topics[2])
             if not self.base.is_tracked(owner_address):
@@ -341,7 +341,7 @@ class MakerdaoDecoder(DecoderInterface, HasDSProxy):  # lgtm[py/missing-call-to-
 
             proxy_address = hex_or_bytes_to_address(tx_log.data[0:32])
             notes = f'Create DSR proxy {proxy_address} with owner {owner_address}'
-            event = HistoryBaseEntry(
+            event = CryptoHistoryBaseEntry(
                 event_identifier=transaction.tx_hash,
                 sequence_index=self.base.get_sequence_index(tx_log),
                 timestamp=ts_sec_to_ms(transaction.timestamp),
@@ -363,9 +363,9 @@ class MakerdaoDecoder(DecoderInterface, HasDSProxy):  # lgtm[py/missing-call-to-
             self,
             tx_log: EthereumTxReceiptLog,
             transaction: EvmTransaction,
-            decoded_events: List[HistoryBaseEntry],  # pylint: disable=unused-argument
+            decoded_events: List[CryptoHistoryBaseEntry],  # pylint: disable=unused-argument
             all_logs: List[EthereumTxReceiptLog],  # pylint: disable=unused-argument
-    ) -> Tuple[Optional[HistoryBaseEntry], Optional[ActionItem]]:
+    ) -> Tuple[Optional[CryptoHistoryBaseEntry], Optional[ActionItem]]:
         owner_address = self._get_address_or_proxy(hex_or_bytes_to_address(tx_log.topics[2]))
         if owner_address is None:
             return None, None
@@ -375,7 +375,7 @@ class MakerdaoDecoder(DecoderInterface, HasDSProxy):  # lgtm[py/missing-call-to-
 
         cdp_id = hex_or_bytes_to_int(tx_log.topics[3])
         notes = f'Create MakerDAO vault with id {cdp_id} and owner {owner_address}'
-        event = HistoryBaseEntry(
+        event = CryptoHistoryBaseEntry(
             event_identifier=transaction.tx_hash,
             sequence_index=self.base.get_sequence_index(tx_log),
             timestamp=ts_sec_to_ms(transaction.timestamp),
@@ -395,9 +395,9 @@ class MakerdaoDecoder(DecoderInterface, HasDSProxy):  # lgtm[py/missing-call-to-
             self,
             tx_log: EthereumTxReceiptLog,
             transaction: EvmTransaction,  # pylint: disable=unused-argument
-            decoded_events: List[HistoryBaseEntry],  # pylint: disable=unused-argument
+            decoded_events: List[CryptoHistoryBaseEntry],  # pylint: disable=unused-argument
             all_logs: List[EthereumTxReceiptLog],  # pylint: disable=unused-argument
-    ) -> Tuple[Optional[HistoryBaseEntry], Optional[ActionItem]]:
+    ) -> Tuple[Optional[CryptoHistoryBaseEntry], Optional[ActionItem]]:
         """Decode vault debt generation by parsing a lognote for cdpmanager move"""
         cdp_id = hex_or_bytes_to_int(tx_log.topics[2])
         destination = hex_or_bytes_to_address(tx_log.topics[3])
@@ -435,10 +435,10 @@ class MakerdaoDecoder(DecoderInterface, HasDSProxy):  # lgtm[py/missing-call-to-
             self,
             tx_log: EthereumTxReceiptLog,
             transaction: EvmTransaction,  # pylint: disable=unused-argument
-            decoded_events: List[HistoryBaseEntry],  # pylint: disable=unused-argument
+            decoded_events: List[CryptoHistoryBaseEntry],  # pylint: disable=unused-argument
             all_logs: List[EthereumTxReceiptLog],  # pylint: disable=unused-argument
             action_items: List[ActionItem],  # pylint: disable=unused-argument
-    ) -> Tuple[Optional[HistoryBaseEntry], Optional[ActionItem]]:
+    ) -> Tuple[Optional[CryptoHistoryBaseEntry], Optional[ActionItem]]:
         """Decode CDPManger Frob (vault change)
 
         Used to find the vault id of a collateral deposit
@@ -494,10 +494,10 @@ class MakerdaoDecoder(DecoderInterface, HasDSProxy):  # lgtm[py/missing-call-to-
             self,
             tx_log: EthereumTxReceiptLog,
             transaction: EvmTransaction,
-            decoded_events: List[HistoryBaseEntry],  # pylint: disable=unused-argument
+            decoded_events: List[CryptoHistoryBaseEntry],  # pylint: disable=unused-argument
             all_logs: List[EthereumTxReceiptLog],  # pylint: disable=unused-argument
             action_items: List[ActionItem],  # pylint: disable=unused-argument
-    ) -> Tuple[Optional[HistoryBaseEntry], Optional[ActionItem]]:
+    ) -> Tuple[Optional[CryptoHistoryBaseEntry], Optional[ActionItem]]:
         if tx_log.topics[0] == NEWCDP:
             return self._decode_vault_creation(tx_log=tx_log, transaction=transaction, decoded_events=decoded_events, all_logs=all_logs)  # noqa: E501
         if tx_log.topics[0] == CDPMANAGER_MOVE:
@@ -511,10 +511,10 @@ class MakerdaoDecoder(DecoderInterface, HasDSProxy):  # lgtm[py/missing-call-to-
             self,
             tx_log: EthereumTxReceiptLog,
             transaction: EvmTransaction,
-            decoded_events: List[HistoryBaseEntry],  # pylint: disable=unused-argument
+            decoded_events: List[CryptoHistoryBaseEntry],  # pylint: disable=unused-argument
             all_logs: List[EthereumTxReceiptLog],  # pylint: disable=unused-argument
             action_items: List[ActionItem],  # pylint: disable=unused-argument
-    ) -> Tuple[Optional[HistoryBaseEntry], Optional[ActionItem]]:
+    ) -> Tuple[Optional[CryptoHistoryBaseEntry], Optional[ActionItem]]:
         if tx_log.topics[0] == ERC20_OR_ERC721_TRANSFER:
             to_address = hex_or_bytes_to_address(tx_log.topics[2])
             if to_address != '0xc73e0383F3Aff3215E6f04B0331D58CeCf0Ab849':

@@ -6,7 +6,7 @@ from enum import auto
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Dict, Iterable, List, NamedTuple, Optional, Tuple, Union
 
-from rotkehlchen.assets.asset import Asset, AssetWithSymbol, EvmToken
+from rotkehlchen.assets.asset import Asset, AssetWithSymbol, EvmToken, FiatAsset
 from rotkehlchen.chain.ethereum.defi.price import handle_defi_price_query
 from rotkehlchen.chain.ethereum.types import string_to_evm_address
 from rotkehlchen.chain.ethereum.utils import token_normalized_value_decimals
@@ -215,9 +215,7 @@ def get_underlying_asset_price(token: EvmToken) -> Optional[Price]:
     return price
 
 
-def _query_currency_converterapi(base: Asset, quote: Asset) -> Optional[Price]:
-    assert base.is_fiat(), 'fiat currency should have been provided'
-    assert quote.is_fiat(), 'fiat currency should have been provided'
+def _query_currency_converterapi(base: FiatAsset, quote: FiatAsset) -> Optional[Price]:
     log.debug(
         'Query free.currencyconverterapi.com fiat pair',
         base_currency=base.identifier,
@@ -462,12 +460,11 @@ class Inquirer():
             if cache is not None:
                 return cache.price
 
-        if asset.is_fiat():
-            try:
-                asset = AssetWithSymbol(asset.identifier)
-                return instance._query_fiat_pair(base=asset, quote=A_USD)
-            except RemoteError:
-                pass  # continue, a price can be found by one of the oracles (CC for example)
+        try:
+            asset = asset.resolve_to_fiat_asset()
+            return instance._query_fiat_pair(base=asset, quote=A_USD)
+        except (UnknownAsset, RemoteError):
+            pass  # continue, asset is not fiat or a price can be found by one of the oracles (CC for example)  # noqa: E501
 
         # Try and check if it is an ethereum token with specified protocol or underlying tokens
         is_known_protocol = False
@@ -706,7 +703,7 @@ class Inquirer():
         return None
 
     @staticmethod
-    def get_fiat_usd_exchange_rates(currencies: Iterable[AssetWithSymbol]) -> Dict[AssetWithSymbol, Price]:  # noqa: E501
+    def get_fiat_usd_exchange_rates(currencies: Iterable[FiatAsset]) -> Dict[FiatAsset, Price]:  # noqa: E501
         """Gets the USD exchange rate of any of the given assets
 
         In case of failure to query a rate it's returned as zero"""
@@ -721,8 +718,8 @@ class Inquirer():
 
     @staticmethod
     def query_historical_fiat_exchange_rates(
-            from_fiat_currency: AssetWithSymbol,
-            to_fiat_currency: AssetWithSymbol,
+            from_fiat_currency: FiatAsset,
+            to_fiat_currency: FiatAsset,
             timestamp: Timestamp,
     ) -> Optional[Price]:
         assert from_fiat_currency.is_fiat(), 'fiat currency should have been provided'
@@ -761,7 +758,7 @@ class Inquirer():
         return rate
 
     @staticmethod
-    def _query_fiat_pair(base: AssetWithSymbol, quote: AssetWithSymbol) -> Price:
+    def _query_fiat_pair(base: FiatAsset, quote: FiatAsset) -> Price:
         """Queries the current price between two fiat assets
 
         If a current price is not found but a cached price within 30 days is found

@@ -157,7 +157,7 @@ class DBAssetBalance:
 
     def serialize(
             self,
-            export_data: Optional[Tuple[AssetWithSymbol, Price]] = None,
+            export_data: Optional[Tuple[Asset, Price]] = None,
     ) -> Dict[str, Union[str, int]]:
         """Serializes a `DBAssetBalance` to dict.
         It accepts an `export_data` tuple of the user's local currency and the value of the
@@ -222,12 +222,13 @@ class LocationData(NamedTuple):
 
     def serialize(
             self,
-            export_data: Optional[Tuple[AssetWithSymbol, Price]] = None,
+            export_data: Optional[Tuple[Asset, Price]] = None,
     ) -> Dict[str, Union[str, int]]:
         if export_data:
             return {
                 'timestamp': timestamp_to_date(self.time, '%Y-%m-%d %H:%M:%S'),
                 'location': Location.deserialize_from_db(self.location).serialize(),
+                # TODO: probably has to change since not all assets have symbol, but all assets can be saved in snapshots
                 f'{export_data[0].symbol.lower()}_value': str(FVal(self.usd_value) * export_data[1]),   # noqa: 501
             }
         return {

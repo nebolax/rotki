@@ -24,6 +24,7 @@ from rotkehlchen.assets.asset import Asset
 from rotkehlchen.constants.assets import A_ETH, A_WETH
 from rotkehlchen.constants.misc import ZERO
 from rotkehlchen.db.settings import DBSettings
+from rotkehlchen.errors.asset import UnknownAsset
 from rotkehlchen.errors.serialization import DeserializationError
 from rotkehlchen.fval import FVal
 from rotkehlchen.logging import RotkehlchenLogsAdapter
@@ -418,12 +419,16 @@ class CostBasisCalculator(CustomizableDateMixin):
         )
         asset_events = self.get_events(asset)
         asset_events.spends.append(event)
-        if not asset.is_fiat() and taxable_spend:
-            return self.calculate_spend_cost_basis(
-                spending_amount=amount,
-                spending_asset=asset,
-                timestamp=timestamp,
-            )
+        if taxable_spend:
+            try:
+                return self.calculate_spend_cost_basis(
+                    spending_amount=amount,
+                    spending_asset=asset.resolve_to_fiat_asset(),
+                    timestamp=timestamp,
+                )
+            except UnknownAsset:
+                pass  # no need in special action, the asset is just not fiat
+
         # just reduce the amount's acquisition without counting anything
         self.reduce_asset_amount(asset=asset, amount=amount, timestamp=timestamp)
         return None

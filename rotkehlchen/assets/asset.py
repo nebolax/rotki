@@ -1,6 +1,7 @@
 import logging
 from dataclasses import dataclass, field
 from functools import total_ordering
+from optparse import Option
 from typing import Any, Dict, List, NamedTuple, Optional, Tuple, Type
 
 from rotkehlchen.constants.resolver import (
@@ -8,7 +9,9 @@ from rotkehlchen.constants.resolver import (
     evm_address_to_identifier,
     strethaddress_to_identifier,
 )
+from rotkehlchen.errors.asset import UnsupportedAsset
 from rotkehlchen.fval import FVal
+from rotkehlchen.globaldb.handler import GlobalDBHandler
 from rotkehlchen.logging import RotkehlchenLogsAdapter
 from rotkehlchen.types import ChecksumEvmAddress, EvmTokenKind, Timestamp
 
@@ -718,19 +721,108 @@ WORLD_TO_CRYPTOCOM = {
 class Asset:
     """Base class for all assets"""
     identifier: str
-    asset_type: AssetType = field(init=False)
-
-    @classmethod
-    def initialize(
-            cls: Type['Asset'],
-            identifier: str,
-            asset_type: AssetType,
-    ) -> 'Asset':
+    
+    def to_dict(self) -> Dict[str, Any]:
         ...
+    
+    def serialize(self) -> ...:
+        """Serializes. Probably for db?"""
+    
+    def resolve_to_asset_with_name(self) -> 'AssetWithName':
+        """
+        May raise:
+        - UnknownAsset if current asset cannot be resolved to an asset with name
+        """
+        if isinstance(self, AssetWithName):
+            return self
+
+        # TODO: call globaldb for an asset with name
+    
+    def resolve_to_nft(self) -> 'NFTAsset':
+        """
+        May raise:
+        - UnknownAsset if current asset cannot be resolved to an NFT
+        """
+        if isinstance(self, NFTAsset):
+            return self
+        
+        # TODO: fill the method
+    
+    def resolve_to_fiat_asset(self) -> 'FiatAsset':
+        """
+        May raise:
+        - UnknownAsset if current asset cannot be resolved to a fiat asset
+        """
+        if isinstance(self, FiatAsset):
+            return self
+
+        return GlobalDBHandler().fiat_asset_from_identifier(self.identifier)
+
+    def resolve_to_crypto_asset(self) -> 'CryptoAsset':
+        """
+        May raise:
+        - UnknownAsset if current asset cannot be resolved to a crypto asset
+        """
+        if isinstance(self, CryptoAsset):
+            return self
+        
+        return GlobalDBHandler().crypto_asset_from_identifier(self.identifier)
+    
+    def resolve_to_symbol_and_oracles_asset(self) -> 'AssetWithSymbolAndCryptoOracles':
+        """
+        May raise:
+        - UnknownAsset if current asset cannot be resolved to an asset with symbol
+        """
+        if isinstance(self, AssetWithSymbolAndCryptoOracles):
+            return self
+        
+        # TODO: call globaldb
+    
+    def resolve_to_evm_token(self) -> 'EvmToken':
+        """
+        May raise:
+        - UnknownAsset if current asset cannot be resolved to an evm token
+        """
+        if isinstance(self, EvmToken):
+            return self
+
+        return GlobalDBHandler().evm_token_from_identifier(self.identifier)
+    
+    def __hash__(self) -> int:
+        return hash(self.identifier)
+
+    def __eq__(self, other: Any) -> bool:
+        if other is None:
+            return False
+
+        if isinstance(other, Asset):
+            return self.identifier.lower() == other.identifier.lower()
+        if isinstance(other, str):
+            return self.identifier.lower() == other.lower()
+        # else
+        raise ValueError(f'Invalid comparison of asset with {type(other)}')
+
+    def __ne__(self, other: Any) -> bool:
+        return not self.__eq__(other)
+
+    def __lt__(self, other: Any) -> bool:
+        if isinstance(other, Asset):
+            return self.identifier < other.identifier
+        if isinstance(other, str):
+            return self.identifier < other
+        # else
+        raise ValueError(f'Invalid comparison of asset with {type(other)}')
 
 
+@dataclass(init=True, repr=False, eq=False, order=False, unsafe_hash=False, frozen=True)
 class AssetWithName(Asset):
-    name: str
+    asset_type: AssetType = field(init=False)
+    name: str = field(init=False)
+
+
+@dataclass(init=True, repr=False, eq=False, order=False, unsafe_hash=False, frozen=True)
+class NFTAsset(AssetWithName):
+    ...
 
 
 @dataclass(init=True, repr=False, eq=False, order=False, unsafe_hash=False, frozen=True)
@@ -738,10 +830,58 @@ class AssetWithSymbol(AssetWithName):
     symbol: str = field(init=False)
 
 
+class AssetWithSymbolAndCryptoOracles(AssetWithSymbol):
+    # None means no special mapping. '' means not supported
+    cryptocompare: Optional[str] = field(init=False)
+    coingecko: Optional[str] = field(init=False)
+
+    def per_asset_init(self) -> None:
+        return super().per_asset_init()
+
+    def is_fiat(self) -> bool:
+        return self.asset_type == AssetType.FIAT
+    
+    def is_evm_token(self) -> bool:
+        return self.asset_type == AssetType.EVM_TOKEN
+
+    def to_cryptocompare(self) -> str:
+        """
+        Returns the symbol with which to query cryptocompare for the asset
+        May raise:
+            - UnsupportedAsset if the asset is not supported by cryptocompare
+        """
+        cryptocompare_str = self.symbol if self.cryptocompare is None else self.cryptocompare
+        # There is an asset which should not be queried in cryptocompare
+        if cryptocompare_str is None or cryptocompare_str == '':
+            raise UnsupportedAsset(f'{self.identifier} is not supported by cryptocompare')
+
+        # Seems cryptocompare capitalizes everything. So cDAI -> CDAI
+        return cryptocompare_str.upper()
+
+    def to_coingecko(self) -> str:
+        """
+        Returns the symbol with which to query coingecko for the asset
+        May raise:
+            - UnsupportedAsset if the asset is not supported by coingecko
+        """
+        coingecko_str = '' if self.coingecko is None else self.coingecko
+        # This asset has no coingecko mapping
+        if coingecko_str == '':
+            raise UnsupportedAsset(f'{self.identifier} is not supported by coingecko')
+        return coingecko_str
+
+    def has_coingecko(self) -> bool:
+        return self.coingecko is not None and self.coingecko != ''
+
+    def has_oracle(self) -> bool:
+        return self.has_coingecko() or self.cryptocompare is not None
+    
+    def to_bittrex(self) -> str:
+        return WORLD_TO_BITTREX.get(self.identifier, self.identifier)
+
 
 @dataclass(init=True, repr=False, eq=False, order=False, unsafe_hash=False, frozen=True)
-class FiatAsset(AssetWithSymbol):
-    ...
+class FiatAsset(AssetWithSymbolAndCryptoOracles):
 
     @classmethod
     def initialize(
@@ -750,18 +890,24 @@ class FiatAsset(AssetWithSymbol):
             asset_type: AssetType,
             name: Optional[str] = None,
             symbol: Optional[str] = None,
-    ) -> 'AssetWithSymbol':
-        ...
+            coingecko: Optional[str] = None,
+            cryptocompare: Optional[str] = '',
+    ) -> 'FiatAsset':
+        asset = FiatAsset(identifier='whatever', direct_field_initialization=True)
+        object.__setattr__(asset, 'identifier', identifier)
+        object.__setattr__(asset, 'asset_type', asset_type)
+        object.__setattr__(asset, 'name', name)
+        object.__setattr__(asset, 'symbol', symbol)
+        object.__setattr__(asset, 'cryptocompare', cryptocompare)
+        object.__setattr__(asset, 'coingecko', coingecko)
+        return asset
 
 
 @dataclass(init=True, repr=False, eq=False, order=False, unsafe_hash=False, frozen=True)
-class CryptoAsset(AssetWithSymbol):
+class CryptoAsset(AssetWithSymbolAndCryptoOracles):
     started: Optional[Timestamp] = field(init=False)
     forked: Optional['CryptoAsset'] = field(init=False)
     swapped_for: Optional['CryptoAsset'] = field(init=False)
-    # None means no special mapping. '' means not supported
-    cryptocompare: Optional[str] = field(init=False)
-    coingecko: Optional[str] = field(init=False)
 
     @classmethod
     def initialize(
@@ -770,14 +916,23 @@ class CryptoAsset(AssetWithSymbol):
             asset_type: AssetType,
             name: Optional[str] = None,
             symbol: Optional[str] = None,
+            coingecko: Optional[str] = None,
+            cryptocompare: Optional[str] = '',
             started: Optional[Timestamp] = None,
             forked: Optional['CryptoAsset'] = None,
             swapped_for: Optional['CryptoAsset'] = None,
-            coingecko: Optional[str] = None,
-            # add the asset with inactive cryptocompare so querying is not attempted by symbol
-            cryptocompare: Optional[str] = '',
     ) -> 'CryptoAsset':
-        ...
+        asset = CryptoAsset(identifier='whatever', direct_field_initialization=True)
+        object.__setattr__(asset, 'identifier', identifier)
+        object.__setattr__(asset, 'asset_type', asset_type)
+        object.__setattr__(asset, 'name', name)
+        object.__setattr__(asset, 'symbol', symbol)
+        object.__setattr__(asset, 'cryptocompare', cryptocompare)
+        object.__setattr__(asset, 'coingecko', coingecko)
+        object.__setattr__(asset, 'started', started)
+        object.__setattr__(asset, 'forked', forked)
+        object.__setattr__(asset, 'swapped_for', swapped_for)
+        return asset
 
 
 EthereumTokenDBTuple = Tuple[
@@ -798,6 +953,7 @@ EthereumTokenDBTuple = Tuple[
 
 @dataclass(init=True, repr=False, eq=False, order=False, unsafe_hash=False, frozen=True)
 class EvmToken(CryptoAsset):
+    form_with_incomplete_data: bool = field(default=False)
     evm_address: ChecksumEvmAddress = field(init=False)
     chain: ChainID = field(init=False)
     token_kind: EvmTokenKind = field(init=False)
@@ -805,37 +961,67 @@ class EvmToken(CryptoAsset):
     protocol: str = field(init=False)
     underlying_tokens: List[UnderlyingToken] = field(init=False)
 
-    def __post_init__(
-            self,
-            direct_field_initialization: bool = False,
-            form_with_incomplete_data: bool = False,
-    ) -> None:
-        ...
-
     @classmethod
     def initialize(
             cls: Type['EvmToken'],
             address: ChecksumEvmAddress,
             chain: ChainID,
             token_kind: EvmTokenKind,
-            decimals: Optional[int] = None,
             name: Optional[str] = None,
             symbol: Optional[str] = None,
             started: Optional[Timestamp] = None,
             forked: Optional[CryptoAsset] = None,
             swapped_for: Optional[CryptoAsset] = None,
             coingecko: Optional[str] = None,
-            # add the token with inactive cryptocompare so querying is not attempted by symbol
             cryptocompare: Optional[str] = '',
+            decimals: Optional[int] = None,
             protocol: Optional[str] = None,
             underlying_tokens: Optional[List[UnderlyingToken]] = None,
     ) -> 'EvmToken':
-        ...
+        asset = EvmToken(identifier='whatever', direct_field_initialization=True)
+        identifier = evm_address_to_identifier(
+            address=address,
+            chain=chain,
+            token_type=token_kind,
+        )
+        object.__setattr__(asset, 'identifier', identifier)
+        object.__setattr__(asset, 'asset_type', AssetType.EVM_TOKEN)
+        object.__setattr__(asset, 'name', name)
+        object.__setattr__(asset, 'symbol', symbol)
+        object.__setattr__(asset, 'cryptocompare', cryptocompare)
+        object.__setattr__(asset, 'coingecko', coingecko)
+        object.__setattr__(asset, 'started', started)
+        object.__setattr__(asset, 'forked', forked)
+        object.__setattr__(asset, 'swapped_for', swapped_for)
+        object.__setattr__(asset, 'address', address)
+        object.__setattr__(asset, 'chain', chain)
+        object.__setattr__(asset, 'token_kind', token_kind)
+        object.__setattr__(asset, 'decimals', decimals)
+        object.__setattr__(asset, 'protocol', protocol)
+        object.__setattr__(asset, 'underlying_tokens', underlying_tokens)
+        return asset
 
     @classmethod
     def deserialize_from_db(
-            cls,
+            cls: Type['EvmToken'],
             entry: EthereumTokenDBTuple,
             underlying_tokens: Optional[List[UnderlyingToken]] = None,
     ) -> 'EvmToken':
-        ...
+        """May raise UnknownAsset if the swapped for asset can't be recognized
+        That error would be bad because it would mean somehow an unknown id made it into the DB
+        """
+        swapped_for = Asset(entry[8]) if entry[8] is not None else None
+        return EvmToken.initialize(
+            address=entry[1],  # type: ignore
+            chain=ChainID(entry[2]),
+            token_kind=EvmTokenKind.deserialize_from_db(entry[3]),
+            decimals=entry[4],
+            name=entry[5],
+            symbol=entry[6],
+            started=Timestamp(entry[7]),  # type: ignore
+            swapped_for=swapped_for,
+            coingecko=entry[9],
+            cryptocompare=entry[10],
+            protocol=entry[11],
+            underlying_tokens=underlying_tokens,
+        )

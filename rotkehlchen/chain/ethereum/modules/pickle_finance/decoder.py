@@ -1,6 +1,6 @@
 from typing import TYPE_CHECKING, Callable, List
 
-from rotkehlchen.accounting.structures.base import HistoryBaseEntry
+from rotkehlchen.accounting.structures.base import CryptoHistoryBaseEntry
 from rotkehlchen.accounting.structures.types import HistoryEventSubType, HistoryEventType
 from rotkehlchen.assets.asset import EvmToken
 from rotkehlchen.chain.ethereum.constants import ZERO_ADDRESS
@@ -42,7 +42,7 @@ class PickleFinanceDecoder(DecoderInterface):  # lgtm[py/missing-call-to-init]
             token: EvmToken,  # pylint: disable=unused-argument
             tx_log: EthereumTxReceiptLog,
             transaction: EvmTransaction,
-            event: HistoryBaseEntry,
+            event: CryptoHistoryBaseEntry,
             action_items: List[ActionItem],  # pylint: disable=unused-argument
     ) -> bool:
         """Enrich tranfer transactions to address for jar deposits and withdrawals"""

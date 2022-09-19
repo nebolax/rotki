@@ -1,6 +1,6 @@
 from typing import TYPE_CHECKING, Callable, List, Optional
 
-from rotkehlchen.accounting.structures.base import HistoryBaseEntry
+from rotkehlchen.accounting.structures.base import CryptoHistoryBaseEntry
 from rotkehlchen.assets.asset import EvmToken
 from rotkehlchen.chain.ethereum.decoding.interfaces import DecoderInterface
 from rotkehlchen.chain.ethereum.decoding.structures import ActionItem
@@ -39,7 +39,7 @@ class Uniswapv2Decoder(DecoderInterface):
             token: Optional[EvmToken],  # pylint: disable=unused-argument
             tx_log: EthereumTxReceiptLog,
             transaction: EvmTransaction,
-            decoded_events: List[HistoryBaseEntry],
+            decoded_events: List[CryptoHistoryBaseEntry],
             action_items: List[ActionItem],  # pylint: disable=unused-argument
     ) -> None:
         if tx_log.topics[0] == SWAP_SIGNATURE:

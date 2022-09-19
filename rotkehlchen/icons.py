@@ -9,10 +9,10 @@ from typing import Optional, Set
 import gevent
 import requests
 
-from rotkehlchen.assets.asset import Asset
+from rotkehlchen.assets.asset import Asset, AssetWithSymbolAndCryptoOracles, CryptoAsset
 from rotkehlchen.assets.types import AssetType
 from rotkehlchen.constants.timing import DEFAULT_TIMEOUT_TUPLE
-from rotkehlchen.errors.asset import UnsupportedAsset
+from rotkehlchen.errors.asset import UnknownAsset, UnsupportedAsset
 from rotkehlchen.errors.misc import RemoteError
 from rotkehlchen.externalapis.coingecko import DELISTED_ASSETS, Coingecko
 from rotkehlchen.globaldb.handler import GlobalDBHandler
@@ -70,7 +70,7 @@ class IconManager():
 
         return file_md5(path)
 
-    def query_coingecko_for_icon(self, asset: Asset) -> bool:
+    def query_coingecko_for_icon(self, asset: AssetWithSymbolAndCryptoOracles) -> bool:
         """Queries coingecko for icons of an asset
 
         If query was okay it returns True, else False
@@ -127,7 +127,9 @@ class IconManager():
             return image_data
 
         # Then our only chance is coingecko
-        if not asset.has_coingecko():
+        try:
+            asset = asset.resolve_to_symbol_and_oracles_asset()
+        except UnknownAsset:
             return None
 
         needed_path = self.iconfile_path(asset)
@@ -164,7 +166,7 @@ class IconManager():
             f'Uncached assets: {len(uncached_asset_ids)}. Cached assets: {len(cached_asset_ids)}',
         )
         for asset_name in itertools.islice(uncached_asset_ids, batch_size):
-            self.query_coingecko_for_icon(Asset(asset_name))
+            self.query_coingecko_for_icon(AssetWithSymbolAndCryptoOracles(asset_name))
 
         return len(uncached_asset_ids) > batch_size
 

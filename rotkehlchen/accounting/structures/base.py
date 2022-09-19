@@ -9,7 +9,7 @@ from rotkehlchen.accounting.structures.types import (
     HistoryEventSubType,
     HistoryEventType,
 )
-from rotkehlchen.assets.asset import Asset, AssetWithSymbol
+from rotkehlchen.assets.asset import Asset, AssetWithSymbol, CryptoAsset
 from rotkehlchen.constants.assets import A_ETH2
 from rotkehlchen.errors.serialization import DeserializationError
 from rotkehlchen.fval import FVal
@@ -28,7 +28,7 @@ from rotkehlchen.utils.misc import (
     ts_sec_to_ms,
 )
 
-from ...assets.utils import get_asset_by_identifier
+from ...assets.utils import Asset
 from .balance import Balance
 
 if TYPE_CHECKING:
@@ -83,13 +83,14 @@ class HistoryBaseEntry(AccountingEventMixin):
     Intended to be the base unit of any type of accounting. All trades, deposits,
     swaps etc. are going to be made up of multiple HistoryBaseEntry
     """
+    asset_class = Asset
     event_identifier: bytes  # identifier shared between related events
     sequence_index: int  # When this transaction was executed relative to other related events
     timestamp: TimestampMS
     location: Location
     event_type: HistoryEventType
     event_subtype: HistoryEventSubType
-    asset: AssetWithSymbol
+    asset: asset_class
     balance: Balance
     # location_label is a string field that allows to provide more information about the location.
     # When we use this structure in blockchains can be used to specify addresses for example.
@@ -141,7 +142,7 @@ class HistoryBaseEntry(AccountingEventMixin):
                 )
 
         try:
-            return HistoryBaseEntry(
+            return cls(
                 identifier=entry[0],
                 event_identifier=entry[1],
                 sequence_index=entry[2],
@@ -150,7 +151,7 @@ class HistoryBaseEntry(AccountingEventMixin):
                 location_label=entry[5],
                 # Setting incomplete data to true since we save all history events,
                 # regardless of the type of token that it may involve
-                asset=get_asset_by_identifier(entry[6], form_with_incomplete_data=True),
+                asset=cls.asset_class(entry[6], form_with_incomplete_data=True),
                 balance=Balance(
                     amount=FVal(entry[7]),
                     usd_value=FVal(entry[8]),
@@ -224,7 +225,7 @@ class HistoryBaseEntry(AccountingEventMixin):
             notes=deserialize_optional(data['notes'], str),
             identifier=deserialize_optional(data['identifier'], int),
             counterparty=deserialize_optional(data['counterparty'], str),
-            asset=get_asset_by_identifier(data['asset']),
+            asset=cls.asset_class(data['asset']),
             balance=Balance(
                 amount=deserialize_fval(
                     value=data['balance']['amount'],
@@ -309,6 +310,12 @@ class HistoryBaseEntry(AccountingEventMixin):
             return 1
         # else it's a decoded transaction event and should be processed there
         return accounting.transactions.process(self, events_iterator)
+
+
+@dataclass(init=True, repr=True, eq=True, order=False, unsafe_hash=False, frozen=False)
+class CryptoHistoryBaseEntry(HistoryBaseEntry):
+    """Used in places like decoders where a crypto asset is required"""
+    asset_class = CryptoAsset
 
 
 @dataclass(init=True, repr=True, eq=True, order=False, unsafe_hash=False, frozen=False)

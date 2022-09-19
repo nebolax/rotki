@@ -3,7 +3,7 @@ import os
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
 
 from rotkehlchen.accounting.structures.balance import Balance
-from rotkehlchen.accounting.structures.base import HistoryBaseEntry
+from rotkehlchen.accounting.structures.base import CryptoHistoryBaseEntry
 from rotkehlchen.accounting.structures.types import HistoryEventSubType, HistoryEventType
 from rotkehlchen.chain.ethereum.decoding.interfaces import DecoderInterface
 from rotkehlchen.chain.ethereum.decoding.structures import ActionItem
@@ -51,10 +51,10 @@ class DxdaomesaDecoder(DecoderInterface):  # lgtm[py/missing-call-to-init]
             self,
             tx_log: EthereumTxReceiptLog,
             transaction: EvmTransaction,  # pylint: disable=unused-argument
-            decoded_events: List[HistoryBaseEntry],  # pylint: disable=unused-argument
+            decoded_events: List[CryptoHistoryBaseEntry],  # pylint: disable=unused-argument
             all_logs: List[EthereumTxReceiptLog],  # pylint: disable=unused-argument
             action_items: List[ActionItem],  # pylint: disable=unused-argument
-    ) -> Tuple[Optional[HistoryBaseEntry], Optional[ActionItem]]:
+    ) -> Tuple[Optional[CryptoHistoryBaseEntry], Optional[ActionItem]]:
         if tx_log.topics[0] == DEPOSIT:
             return self._decode_deposit(tx_log, transaction, decoded_events, all_logs, action_items)  # noqa: E501
         if tx_log.topics[0] == ORDER_PLACEMENT:
@@ -70,10 +70,10 @@ class DxdaomesaDecoder(DecoderInterface):  # lgtm[py/missing-call-to-init]
             self,
             tx_log: EthereumTxReceiptLog,
             transaction: EvmTransaction,  # pylint: disable=unused-argument
-            decoded_events: List[HistoryBaseEntry],  # pylint: disable=unused-argument
+            decoded_events: List[CryptoHistoryBaseEntry],  # pylint: disable=unused-argument
             all_logs: List[EthereumTxReceiptLog],  # pylint: disable=unused-argument
             action_items: List[ActionItem],  # pylint: disable=unused-argument
-    ) -> Tuple[Optional[HistoryBaseEntry], Optional[ActionItem]]:
+    ) -> Tuple[Optional[CryptoHistoryBaseEntry], Optional[ActionItem]]:
         topic_data, log_data = self.contract.decode_event(
             tx_log=tx_log,
             event_name='Deposit',
@@ -99,10 +99,10 @@ class DxdaomesaDecoder(DecoderInterface):  # lgtm[py/missing-call-to-init]
             self,
             tx_log: EthereumTxReceiptLog,
             transaction: EvmTransaction,  # pylint: disable=unused-argument
-            decoded_events: List[HistoryBaseEntry],  # pylint: disable=unused-argument
+            decoded_events: List[CryptoHistoryBaseEntry],  # pylint: disable=unused-argument
             all_logs: List[EthereumTxReceiptLog],  # pylint: disable=unused-argument
             action_items: List[ActionItem],  # pylint: disable=unused-argument
-    ) -> Tuple[Optional[HistoryBaseEntry], Optional[ActionItem]]:
+    ) -> Tuple[Optional[CryptoHistoryBaseEntry], Optional[ActionItem]]:
         topic_data, log_data = self.contract.decode_event(
             tx_log=tx_log,
             event_name='Withdraw',
@@ -128,10 +128,10 @@ class DxdaomesaDecoder(DecoderInterface):  # lgtm[py/missing-call-to-init]
             self,
             tx_log: EthereumTxReceiptLog,
             transaction: EvmTransaction,  # pylint: disable=unused-argument
-            decoded_events: List[HistoryBaseEntry],  # pylint: disable=unused-argument
+            decoded_events: List[CryptoHistoryBaseEntry],  # pylint: disable=unused-argument
             all_logs: List[EthereumTxReceiptLog],  # pylint: disable=unused-argument
             action_items: List[ActionItem],  # pylint: disable=unused-argument
-    ) -> Tuple[Optional[HistoryBaseEntry], Optional[ActionItem]]:
+    ) -> Tuple[Optional[CryptoHistoryBaseEntry], Optional[ActionItem]]:
         topic_data, log_data = self.contract.decode_event(
             tx_log=tx_log,
             event_name='WithdrawRequest',
@@ -146,7 +146,7 @@ class DxdaomesaDecoder(DecoderInterface):  # lgtm[py/missing-call-to-init]
             return None, None
         amount = asset_normalized_value(amount=log_data[0], asset=token)
 
-        event = HistoryBaseEntry(
+        event = CryptoHistoryBaseEntry(
             event_identifier=transaction.tx_hash,
             sequence_index=self.base.get_sequence_index(tx_log),
             timestamp=ts_sec_to_ms(transaction.timestamp),
@@ -166,10 +166,10 @@ class DxdaomesaDecoder(DecoderInterface):  # lgtm[py/missing-call-to-init]
             self,
             tx_log: EthereumTxReceiptLog,
             transaction: EvmTransaction,  # pylint: disable=unused-argument
-            decoded_events: List[HistoryBaseEntry],  # pylint: disable=unused-argument
+            decoded_events: List[CryptoHistoryBaseEntry],  # pylint: disable=unused-argument
             all_logs: List[EthereumTxReceiptLog],  # pylint: disable=unused-argument
             action_items: List[ActionItem],  # pylint: disable=unused-argument
-    ) -> Tuple[Optional[HistoryBaseEntry], Optional[ActionItem]]:
+    ) -> Tuple[Optional[CryptoHistoryBaseEntry], Optional[ActionItem]]:
         """Some docs: https://docs.gnosis.io/protocol/docs/tutorial-limit-orders/"""
         topic_data, log_data = self.contract.decode_event(
             tx_log=tx_log,
@@ -194,7 +194,7 @@ class DxdaomesaDecoder(DecoderInterface):  # lgtm[py/missing-call-to-init]
 
         buy_amount = asset_normalized_value(amount=log_data[3], asset=buy_token)
         sell_amount = asset_normalized_value(amount=log_data[4], asset=sell_token)
-        event = HistoryBaseEntry(
+        event = CryptoHistoryBaseEntry(
             event_identifier=transaction.tx_hash,
             sequence_index=self.base.get_sequence_index(tx_log),
             timestamp=ts_sec_to_ms(transaction.timestamp),

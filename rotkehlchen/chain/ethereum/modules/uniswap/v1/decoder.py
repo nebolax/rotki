@@ -1,6 +1,6 @@
 from typing import Callable, List, Optional
 
-from rotkehlchen.accounting.structures.base import HistoryBaseEntry
+from rotkehlchen.accounting.structures.base import CryptoHistoryBaseEntry
 from rotkehlchen.accounting.structures.types import HistoryEventSubType, HistoryEventType
 from rotkehlchen.assets.asset import EvmToken
 from rotkehlchen.chain.ethereum.decoding.interfaces import DecoderInterface
@@ -25,7 +25,7 @@ class Uniswapv1Decoder(DecoderInterface):  # lgtm[py/missing-call-to-init]
             token: Optional[EvmToken],  # pylint: disable=unused-argument
             tx_log: EthereumTxReceiptLog,
             transaction: EvmTransaction,  # pylint: disable=unused-argument
-            decoded_events: List[HistoryBaseEntry],
+            decoded_events: List[CryptoHistoryBaseEntry],
             action_items: List[ActionItem],  # pylint: disable=unused-argument
     ) -> None:
         """Search for both events. Since the order is not guaranteed try reshuffle in both cases"""

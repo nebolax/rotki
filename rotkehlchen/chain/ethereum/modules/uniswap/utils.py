@@ -238,19 +238,3 @@ def find_uniswap_v2_lp_price(
     numerator = (token0_supply * token0_price + token1_supply * token1_price)
     share_value = numerator / total_supply
     return Price(share_value)
-
-
-def historical_uniswap_v2_lp_price(
-        ethereum: 'EthereumManager',
-        token: EvmToken,
-        to_asset: Asset,
-        timestamp: Timestamp,
-) -> Optional[Price]:
-    block_identifier = ethereum.get_blocknumber_by_time(timestamp)
-    return find_uniswap_v2_lp_price(
-        ethereum=ethereum,
-        token=token,
-        token_price_func=PriceHistorian.query_historical_price,
-        token_price_func_args=[to_asset, timestamp],
-        block_identifier=block_identifier,
-    )

@@ -7,7 +7,7 @@ from gevent.lock import Semaphore
 
 from rotkehlchen.accounting.structures.balance import AssetBalance, Balance, BalanceSheet
 from rotkehlchen.accounting.structures.defi import DefiEvent, DefiEventType
-from rotkehlchen.assets.asset import Asset
+from rotkehlchen.assets.asset import Asset, CryptoAsset
 from rotkehlchen.chain.ethereum.defi.defisaver_proxy import HasDSProxy
 from rotkehlchen.chain.ethereum.utils import asset_normalized_value, token_normalized_value
 from rotkehlchen.constants import ONE, ZERO
@@ -190,7 +190,7 @@ class MakerdaoVault(NamedTuple):
     # e.g. ETH-A. Various types can be seen here: https://catflip.co/
     collateral_type: str
     owner: ChecksumEvmAddress
-    collateral_asset: Asset
+    collateral_asset: CryptoAsset
     # The amount/usd_value of collateral tokens locked
     collateral: Balance
     # amount/usd value of DAI drawn
@@ -235,7 +235,7 @@ class MakerdaoVault(NamedTuple):
 
 class MakerdaoVaultDetails(NamedTuple):
     identifier: int
-    collateral_asset: Asset  # the vault's collateral asset
+    collateral_asset: CryptoAsset  # the vault's collateral asset
     creation_ts: Timestamp
     # Total amount of DAI owed to the vault, past and future as interest rate
     # Will be negative if vault has been liquidated. If it's negative then this
@@ -758,8 +758,8 @@ class MakerdaoVaults(HasDSProxy):
                 if timestamp > to_timestamp:
                     break
 
-                got_asset: Optional[Asset]
-                spent_asset: Optional[Asset]
+                got_asset: Optional[CryptoAsset]
+                spent_asset: Optional[CryptoAsset]
                 pnl = got_asset = got_balance = spent_asset = spent_balance = None  # noqa: E501
                 count_spent_got_cost_basis = False
                 if event.event_type == VaultEventType.GENERATE_DEBT:

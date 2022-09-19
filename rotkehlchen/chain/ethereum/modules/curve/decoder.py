@@ -1,6 +1,6 @@
 from typing import TYPE_CHECKING, Any, Callable, Dict, List, Mapping, Optional, Tuple
 
-from rotkehlchen.accounting.structures.base import HistoryBaseEntry
+from rotkehlchen.accounting.structures.base import CryptoHistoryBaseEntry
 from rotkehlchen.accounting.structures.types import HistoryEventSubType, HistoryEventType
 from rotkehlchen.assets.asset import EvmToken
 from rotkehlchen.chain.ethereum.decoding.interfaces import DecoderInterface
@@ -50,9 +50,9 @@ class CurveDecoder(DecoderInterface):  # lgtm[py/missing-call-to-init]
         self,
         tx_log: EthereumTxReceiptLog,
         transaction: EvmTransaction,
-        decoded_events: List[HistoryBaseEntry],
+        decoded_events: List[CryptoHistoryBaseEntry],
         user_address: ChecksumEvmAddress,
-    ) -> Tuple[Optional[HistoryBaseEntry], Optional[ActionItem]]:
+    ) -> Tuple[Optional[CryptoHistoryBaseEntry], Optional[ActionItem]]:
         """Decode information related to withdrawing assets from curve pools"""
         for event in decoded_events:
             if (  # Withdraw eth
@@ -94,9 +94,9 @@ class CurveDecoder(DecoderInterface):  # lgtm[py/missing-call-to-init]
     def _decode_curve_deposit_events(
         self,
         tx_log: EthereumTxReceiptLog,
-        decoded_events: List[HistoryBaseEntry],
+        decoded_events: List[CryptoHistoryBaseEntry],
         user_address: ChecksumEvmAddress,
-    ) -> Tuple[Optional[HistoryBaseEntry], Optional[ActionItem]]:
+    ) -> Tuple[Optional[CryptoHistoryBaseEntry], Optional[ActionItem]]:
         """Decode information related to depositing assets in curve pools"""
         for event in decoded_events:
             if (  # Deposit ETH
@@ -155,10 +155,10 @@ class CurveDecoder(DecoderInterface):  # lgtm[py/missing-call-to-init]
         self,
         tx_log: EthereumTxReceiptLog,
         transaction: EvmTransaction,
-        decoded_events: List[HistoryBaseEntry],
+        decoded_events: List[CryptoHistoryBaseEntry],
         all_logs: List[EthereumTxReceiptLog],  # pylint: disable=unused-argument
         action_items: Optional[List[ActionItem]],  # pylint: disable=unused-argument
-    ) -> Tuple[Optional[HistoryBaseEntry], Optional[ActionItem]]:
+    ) -> Tuple[Optional[CryptoHistoryBaseEntry], Optional[ActionItem]]:
         if tx_log.topics[0] in (
             REMOVE_LIQUIDITY,
             REMOVE_ONE,
@@ -192,7 +192,7 @@ class CurveDecoder(DecoderInterface):  # lgtm[py/missing-call-to-init]
             token: EvmToken,  # pylint: disable=unused-argument
             tx_log: EthereumTxReceiptLog,
             transaction: EvmTransaction,
-            event: HistoryBaseEntry,
+            event: CryptoHistoryBaseEntry,
             action_items: List[ActionItem],  # pylint: disable=unused-argument
     ) -> bool:
         source_address = hex_or_bytes_to_address(tx_log.topics[1])

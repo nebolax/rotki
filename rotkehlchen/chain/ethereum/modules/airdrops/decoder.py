@@ -1,7 +1,7 @@
 from typing import TYPE_CHECKING, Any, Dict, List, Literal, Optional, Tuple
 
 from rotkehlchen.accounting.structures.balance import Balance
-from rotkehlchen.accounting.structures.base import HistoryBaseEntry
+from rotkehlchen.accounting.structures.base import CryptoHistoryBaseEntry
 from rotkehlchen.accounting.structures.types import HistoryEventSubType, HistoryEventType
 from rotkehlchen.chain.ethereum.decoding.constants import ERC20_OR_ERC721_TRANSFER
 from rotkehlchen.chain.ethereum.decoding.interfaces import DecoderInterface
@@ -69,10 +69,10 @@ class AirdropsDecoder(DecoderInterface):  # lgtm[py/missing-call-to-init]
             self,
             tx_log: EthereumTxReceiptLog,
             transaction: EvmTransaction,  # pylint: disable=unused-argument
-            decoded_events: List[HistoryBaseEntry],  # pylint: disable=unused-argument
+            decoded_events: List[CryptoHistoryBaseEntry],  # pylint: disable=unused-argument
             all_logs: List[EthereumTxReceiptLog],  # pylint: disable=unused-argument
             action_items: List[ActionItem],  # pylint: disable=unused-argument
-    ) -> Tuple[Optional[HistoryBaseEntry], Optional[ActionItem]]:
+    ) -> Tuple[Optional[CryptoHistoryBaseEntry], Optional[ActionItem]]:
         if tx_log.topics[0] != UNISWAP_TOKEN_CLAIMED:
             return None, None
 
@@ -94,10 +94,10 @@ class AirdropsDecoder(DecoderInterface):  # lgtm[py/missing-call-to-init]
             self,
             tx_log: EthereumTxReceiptLog,
             transaction: EvmTransaction,  # pylint: disable=unused-argument
-            decoded_events: List[HistoryBaseEntry],  # pylint: disable=unused-argument
+            decoded_events: List[CryptoHistoryBaseEntry],  # pylint: disable=unused-argument
             all_logs: List[EthereumTxReceiptLog],  # pylint: disable=unused-argument
             action_items: List[ActionItem],  # pylint: disable=unused-argument
-    ) -> Tuple[Optional[HistoryBaseEntry], Optional[ActionItem]]:
+    ) -> Tuple[Optional[CryptoHistoryBaseEntry], Optional[ActionItem]]:
         if tx_log.topics[0] != FOX_CLAIMED:
             return None, None
 
@@ -119,10 +119,10 @@ class AirdropsDecoder(DecoderInterface):  # lgtm[py/missing-call-to-init]
             self,
             tx_log: EthereumTxReceiptLog,
             transaction: EvmTransaction,  # pylint: disable=unused-argument
-            decoded_events: List[HistoryBaseEntry],  # pylint: disable=unused-argument
+            decoded_events: List[CryptoHistoryBaseEntry],  # pylint: disable=unused-argument
             all_logs: List[EthereumTxReceiptLog],  # pylint: disable=unused-argument
             action_items: List[ActionItem],  # pylint: disable=unused-argument
-    ) -> Tuple[Optional[HistoryBaseEntry], Optional[ActionItem]]:
+    ) -> Tuple[Optional[CryptoHistoryBaseEntry], Optional[ActionItem]]:
         if tx_log.topics[0] != BADGER_HUNT_EVENT:
             return None, None
 
@@ -144,10 +144,10 @@ class AirdropsDecoder(DecoderInterface):  # lgtm[py/missing-call-to-init]
             self,
             tx_log: EthereumTxReceiptLog,
             transaction: EvmTransaction,  # pylint: disable=unused-argument
-            decoded_events: List[HistoryBaseEntry],  # pylint: disable=unused-argument
+            decoded_events: List[CryptoHistoryBaseEntry],  # pylint: disable=unused-argument
             all_logs: List[EthereumTxReceiptLog],  # pylint: disable=unused-argument
             action_items: List[ActionItem],  # pylint: disable=unused-argument
-    ) -> Tuple[Optional[HistoryBaseEntry], Optional[ActionItem]]:
+    ) -> Tuple[Optional[CryptoHistoryBaseEntry], Optional[ActionItem]]:
         if tx_log.topics[0] != ONEINCH_CLAIMED:
             return None, None
 
@@ -169,11 +169,11 @@ class AirdropsDecoder(DecoderInterface):  # lgtm[py/missing-call-to-init]
             self,
             tx_log: EthereumTxReceiptLog,
             transaction: EvmTransaction,  # pylint: disable=unused-argument
-            decoded_events: List[HistoryBaseEntry],  # pylint: disable=unused-argument
+            decoded_events: List[CryptoHistoryBaseEntry],  # pylint: disable=unused-argument
             all_logs: List[EthereumTxReceiptLog],  # pylint: disable=unused-argument
             action_items: List[ActionItem],  # pylint: disable=unused-argument
             airdrop: Literal['convex', 'fpis'],
-    ) -> Tuple[Optional[HistoryBaseEntry], Optional[ActionItem]]:
+    ) -> Tuple[Optional[CryptoHistoryBaseEntry], Optional[ActionItem]]:
         if tx_log.topics[0] != FPIS_CONVEX_CLAIM:
             return None, None
 
@@ -202,10 +202,10 @@ class AirdropsDecoder(DecoderInterface):  # lgtm[py/missing-call-to-init]
             self,
             tx_log: EthereumTxReceiptLog,
             transaction: EvmTransaction,  # pylint: disable=unused-argument
-            decoded_events: List[HistoryBaseEntry],  # pylint: disable=unused-argument
+            decoded_events: List[CryptoHistoryBaseEntry],  # pylint: disable=unused-argument
             all_logs: List[EthereumTxReceiptLog],  # pylint: disable=unused-argument
             action_items: List[ActionItem],  # pylint: disable=unused-argument
-    ) -> Tuple[Optional[HistoryBaseEntry], Optional[ActionItem]]:
+    ) -> Tuple[Optional[CryptoHistoryBaseEntry], Optional[ActionItem]]:
         """Example:
         https://etherscan.io/tx/0x1e58aed1baf70b57e6e3e880e1890e7fe607fddc94d62986c38fe70e483e594b
         """
@@ -229,7 +229,7 @@ class AirdropsDecoder(DecoderInterface):  # lgtm[py/missing-call-to-init]
             transfer_raw = hex_or_bytes_to_int(other_log.data[0:32])
             if other_log.address == A_ELFI.evm_address and transfer_raw == raw_amount:
                 delegate_str = 'self-delegate' if user_address == delegate_address else f'delegate it to {delegate_address}'  # noqa: E501
-                event = HistoryBaseEntry(
+                event = CryptoHistoryBaseEntry(
                     event_identifier=transaction.tx_hash,
                     sequence_index=self.base.get_sequence_index(tx_log),
                     timestamp=ts_sec_to_ms(transaction.timestamp),

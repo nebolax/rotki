@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Any, Dict, Iterator, List, Literal, NamedTuple
 from rotkehlchen.accounting.mixins.event import AccountingEventMixin, AccountingEventType
 from rotkehlchen.accounting.structures.balance import Balance
 from rotkehlchen.accounting.structures.types import ActionType
+from rotkehlchen.assets.asset import CryptoAsset
 from rotkehlchen.chain.ethereum.types import string_to_evm_address
 from rotkehlchen.constants.assets import A_ETH, A_ETH2
 from rotkehlchen.constants.misc import ONE, ZERO
@@ -261,7 +262,7 @@ class ValidatorDailyStats(AccountingEventMixin):
     def get_identifier(self) -> str:
         return str(self.validator_index) + str(self.timestamp)
 
-    def get_assets(self) -> List['Asset']:
+    def get_assets(self) -> List['CryptoAsset']:
         return [A_ETH, A_ETH2]
 
     def should_ignore(self, ignored_ids_mapping: Dict[ActionType, List[str]]) -> bool:

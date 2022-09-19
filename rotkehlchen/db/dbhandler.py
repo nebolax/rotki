@@ -27,8 +27,8 @@ from pysqlcipher3 import dbapi2 as sqlcipher
 
 from rotkehlchen.accounting.structures.balance import BalanceType
 from rotkehlchen.accounting.structures.types import ActionType
-from rotkehlchen.assets.asset import Asset, AssetWithSymbol, EvmToken
-from rotkehlchen.assets.utils import get_asset_by_identifier
+from rotkehlchen.assets.asset import Asset, AssetWithSymbol, AssetWithSymbolAndCryptoOracles, EvmToken
+from rotkehlchen.assets.utils import Asset
 from rotkehlchen.balances.manual import ManuallyTrackedBalance
 from rotkehlchen.chain.bitcoin.hdkey import HDKey
 from rotkehlchen.chain.bitcoin.xpub import (
@@ -180,7 +180,7 @@ SETTING_TO_DEFAULT_TYPE = {
     'last_write_ts': (int, Timestamp(0)),
     'last_data_upload_ts': (int, Timestamp(0)),
     'premium_should_sync': (str_to_bool, DEFAULT_PREMIUM_SHOULD_SYNC),
-    'main_currency': (Asset, A_USD),
+    'main_currency': (AssetWithSymbolAndCryptoOracles, A_USD),
 }
 
 
@@ -364,14 +364,14 @@ class DBHandler:
         ...
 
     @overload
-    def get_setting(self, cursor: 'DBCursor', name: Literal['main_currency']) -> AssetWithSymbol:
+    def get_setting(self, cursor: 'DBCursor', name: Literal['main_currency']) -> AssetWithSymbolAndCryptoOracles:
         ...
 
     def get_setting(  # pylint: disable=no-self-use
             self,
             cursor: 'DBCursor',
             name: Literal['version', 'last_write_ts', 'last_data_upload_ts', 'premium_should_sync', 'main_currency'],  # noqa: E501
-    ) -> Union[int, Timestamp, bool, AssetWithSymbol]:
+    ) -> Union[int, Timestamp, bool, AssetWithSymbolAndCryptoOracles]:
         deserializer, default_value = SETTING_TO_DEFAULT_TYPE[name]
         cursor.execute(
             'SELECT value FROM settings WHERE name=?;', (name,),
@@ -1462,7 +1462,7 @@ class DBHandler:
                 balance_type = BalanceType.deserialize_from_db(entry[5])
                 data.append(ManuallyTrackedBalance(
                     id=entry[6],
-                    asset=get_asset_by_identifier(entry[0]),
+                    asset=Asset(entry[0]),
                     label=entry[1],
                     amount=FVal(entry[2]),
                     location=Location.deserialize_from_db(entry[3]),
@@ -2497,7 +2497,7 @@ class DBHandler:
                 for _, asset_id in enumerate(result):
                     try:
                         if asset_id is not None:
-                            results.add(get_asset_by_identifier(asset_id))
+                            results.add(Asset(asset_id))
                     except UnknownAsset:
                         self.msg_aggregator.add_warning(
                             f'Unknown/unsupported asset {asset_id} found in the database. '

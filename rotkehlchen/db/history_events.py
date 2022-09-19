@@ -167,6 +167,7 @@ class DBHistoryEvents():
             cursor: 'DBCursor',
             filter_query: HistoryEventFilterQuery,
             has_premium: bool,
+            only_crypto: bool = False,
     ) -> List[HistoryBaseEntry]:
         """
         Get history events using the provided query filter
@@ -221,7 +222,7 @@ class DBHistoryEvents():
         result = []
         cursor = self.db.conn.cursor()
         cursor.execute(query, bindings)
-        for identifier, amount_raw, asset_name, timestamp in cursor:
+        for identifier, amount_raw, asset_identifier, timestamp in cursor:
             try:
                 amount = deserialize_fval(
                     value=amount_raw,
@@ -232,7 +233,8 @@ class DBHistoryEvents():
                     (
                         identifier,
                         amount,
-                        Asset(asset_name),
+                        # TODO: decide how to load asset_type (cc discord)
+                        Asset(asset_identifier),
                         ts_ms_to_sec(TimestampMS(timestamp)),
                     ),
                 )
@@ -244,7 +246,7 @@ class DBHistoryEvents():
             except UnknownAsset as e:
                 log.error(
                     f'Failed to read asset from historic base entry {identifier} '
-                    f'with asset identifier {asset_name}. {str(e)}',
+                    f'with asset identifier {asset_identifier}. {str(e)}',
                 )
         return result
 
@@ -260,7 +262,7 @@ class DBHistoryEvents():
         cursor.execute(query, bindings)
         for asset_id in cursor:
             try:
-                assets.append(Asset(asset_id[0]))
+                assets.append(Asset(asset_id[0]))  # TODO: also think about asset_type
             except (UnknownAsset, DeserializationError) as e:
                 self.db.msg_aggregator.add_error(
                     f'Found asset {asset_id} in the base history events table and '
@@ -306,7 +308,7 @@ class DBHistoryEvents():
         assets_amounts = []
         for row in cursor:
             try:
-                asset = Asset(row[0])
+                asset = Asset(row[0])  # TODO: asset_type
                 amount = deserialize_fval(
                     value=row[1],
                     name='total amount in history events stats',

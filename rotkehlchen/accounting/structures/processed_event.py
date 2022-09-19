@@ -5,7 +5,7 @@ from typing import Any, Callable, Dict, Optional, Type, TypeVar
 from rotkehlchen.accounting.cost_basis import CostBasisInfo
 from rotkehlchen.accounting.mixins.event import AccountingEventType
 from rotkehlchen.accounting.pnl import PNL
-from rotkehlchen.assets.asset import AssetWithSymbol
+from rotkehlchen.assets.asset import Asset, AssetWithSymbol
 from rotkehlchen.constants.misc import ZERO
 from rotkehlchen.errors.serialization import DeserializationError
 from rotkehlchen.fval import FVal
@@ -28,7 +28,7 @@ class ProcessedAccountingEvent:
     notes: str
     location: Location
     timestamp: Timestamp
-    asset: AssetWithSymbol
+    asset: Asset
     free_amount: FVal
     taxable_amount: FVal
     price: Price
@@ -191,7 +191,7 @@ class ProcessedAccountingEvent:
                 notes=data['notes'],
                 location=Location.deserialize(data['location']),
                 timestamp=timestamp,
-                asset=AssetWithSymbol(data['asset']),
+                asset=Asset(data['asset']),
                 free_amount=deserialize_fval(data['free_amount'], name='free_amount', location='processed event decoding'),  # noqa: E501
                 taxable_amount=deserialize_fval(data['taxable_amount'], name='taxable_amount', location='processed event decoding'),  # noqa: E501
                 price=deserialize_price(data['price']),

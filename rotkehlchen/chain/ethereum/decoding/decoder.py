@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Set, Tupl
 from gevent.lock import Semaphore
 
 from rotkehlchen.accounting.structures.balance import Balance
-from rotkehlchen.accounting.structures.base import HistoryBaseEntry
+from rotkehlchen.accounting.structures.base import CryptoHistoryBaseEntry
 from rotkehlchen.accounting.structures.types import HistoryEventSubType, HistoryEventType
 from rotkehlchen.assets.asset import EvmToken
 from rotkehlchen.assets.utils import get_or_create_evm_token
@@ -165,9 +165,9 @@ class EVMTransactionDecoder():
             token: Optional[EvmToken],
             tx_log: EthereumTxReceiptLog,
             transaction: EvmTransaction,
-            decoded_events: List[HistoryBaseEntry],
+            decoded_events: List[CryptoHistoryBaseEntry],
             action_items: List[ActionItem],
-    ) -> Optional[HistoryBaseEntry]:
+    ) -> Optional[CryptoHistoryBaseEntry]:
         for rule in self.event_rules:
             event = rule(token=token, tx_log=tx_log, transaction=transaction, decoded_events=decoded_events, action_items=action_items)  # noqa: E501
             if event:
@@ -179,10 +179,10 @@ class EVMTransactionDecoder():
             self,
             tx_log: EthereumTxReceiptLog,
             transaction: EvmTransaction,
-            decoded_events: List[HistoryBaseEntry],
+            decoded_events: List[CryptoHistoryBaseEntry],
             all_logs: List[EthereumTxReceiptLog],
             action_items: List[ActionItem],
-    ) -> Tuple[Optional[HistoryBaseEntry], Optional[ActionItem]]:
+    ) -> Tuple[Optional[CryptoHistoryBaseEntry], Optional[ActionItem]]:
         """
         Sees if the log is on an address for which we have specific decoders and calls it
 
@@ -214,7 +214,7 @@ class EVMTransactionDecoder():
             write_cursor: 'DBCursor',
             transaction: EvmTransaction,
             tx_receipt: EthereumTxReceipt,
-    ) -> List[HistoryBaseEntry]:
+    ) -> List[CryptoHistoryBaseEntry]:
         """Decodes an ethereum transaction and its receipt and saves result in the DB"""
         self.base.reset_sequence_counter()
         # check if any eth transfer happened in the transaction, including in internal transactions
@@ -251,7 +251,7 @@ class EVMTransactionDecoder():
             hashes = self.dbethtx.get_transaction_hashes_not_decoded(limit=limit)
             self.decode_transaction_hashes(ignore_cache=False, tx_hashes=hashes)
 
-    def decode_transaction_hashes(self, ignore_cache: bool, tx_hashes: Optional[List[EVMTxHash]]) -> List[HistoryBaseEntry]:  # noqa: E501
+    def decode_transaction_hashes(self, ignore_cache: bool, tx_hashes: Optional[List[EVMTxHash]]) -> List[CryptoHistoryBaseEntry]:  # noqa: E501
         """Make sure that receipts are pulled + events decoded for the given transaction hashes.
 
         The transaction hashes must exist in the DB at the time of the call
@@ -298,7 +298,7 @@ class EVMTransactionDecoder():
             transaction: EvmTransaction,
             tx_receipt: EthereumTxReceipt,
             ignore_cache: bool,
-    ) -> List[HistoryBaseEntry]:
+    ) -> List[CryptoHistoryBaseEntry]:
         """Get a transaction's events if existing in the DB or decode them"""
         if ignore_cache is True:  # delete all decoded events
             self.dbevents.delete_events_by_tx_hash(write_cursor, [transaction.tx_hash])
@@ -329,7 +329,7 @@ class EVMTransactionDecoder():
         self,
         tx: EvmTransaction,
         tx_receipt: EthereumTxReceipt,
-        events: List[HistoryBaseEntry],
+        events: List[CryptoHistoryBaseEntry],
         ts_ms: TimestampMS,
     ) -> None:
         """
@@ -354,7 +354,7 @@ class EVMTransactionDecoder():
                 continue
 
             event_type, location_label, counterparty, verb = direction_result
-            events.append(HistoryBaseEntry(
+            events.append(CryptoHistoryBaseEntry(
                 event_identifier=tx.tx_hash,
                 sequence_index=self.base.get_next_sequence_counter(),
                 timestamp=ts_ms,
@@ -372,9 +372,9 @@ class EVMTransactionDecoder():
             self,
             tx: EvmTransaction,
             tx_receipt: EthereumTxReceipt,
-    ) -> List[HistoryBaseEntry]:
+    ) -> List[CryptoHistoryBaseEntry]:
         """Decodes normal ETH transfers, internal transactions and gas cost payments"""
-        events: List[HistoryBaseEntry] = []
+        events: List[CryptoHistoryBaseEntry] = []
         ts_ms = ts_sec_to_ms(tx.timestamp)
 
         # check for gas spent
@@ -383,7 +383,7 @@ class EVMTransactionDecoder():
             event_type, location_label, counterparty, verb = direction_result
             if event_type in (HistoryEventType.SPEND, HistoryEventType.TRANSFER):
                 eth_burned_as_gas = from_wei(FVal(tx.gas_used * tx.gas_price))
-                events.append(HistoryBaseEntry(
+                events.append(CryptoHistoryBaseEntry(
                     event_identifier=tx.tx_hash,
                     sequence_index=self.base.get_next_sequence_counter(),
                     timestamp=ts_ms,
@@ -416,7 +416,7 @@ class EVMTransactionDecoder():
             if not self.base.is_tracked(tx.from_address):
                 return events
 
-            events.append(HistoryBaseEntry(  # contract deployment
+            events.append(CryptoHistoryBaseEntry(  # contract deployment
                 event_identifier=tx.tx_hash,
                 sequence_index=self.base.get_next_sequence_counter(),
                 timestamp=ts_ms,
@@ -435,7 +435,7 @@ class EVMTransactionDecoder():
             return events
 
         preposition = 'to' if verb == 'Send' else 'from'
-        events.append(HistoryBaseEntry(
+        events.append(CryptoHistoryBaseEntry(
             event_identifier=tx.tx_hash,
             sequence_index=self.base.get_next_sequence_counter(),
             timestamp=ts_ms,
@@ -455,9 +455,9 @@ class EVMTransactionDecoder():
             token: Optional[EvmToken],
             tx_log: EthereumTxReceiptLog,
             transaction: EvmTransaction,
-            decoded_events: List[HistoryBaseEntry],  # pylint: disable=unused-argument
+            decoded_events: List[CryptoHistoryBaseEntry],  # pylint: disable=unused-argument
             action_items: List[ActionItem],  # pylint: disable=unused-argument
-    ) -> Optional[HistoryBaseEntry]:
+    ) -> Optional[CryptoHistoryBaseEntry]:
         if tx_log.topics[0] != ERC20_APPROVE or token is None:
             return None
 
@@ -482,7 +482,7 @@ class EVMTransactionDecoder():
         amount = token_normalized_value(token_amount=amount_raw, token=token)
         prefix = f'Revoke {token.symbol} approval' if amount == ZERO else f'Approve {amount} {token.symbol}'  # noqa: E501
         notes = f'{prefix} of {owner_address} for spending by {spender_address}'
-        return HistoryBaseEntry(
+        return CryptoHistoryBaseEntry(
             event_identifier=transaction.tx_hash,
             sequence_index=self.base.get_sequence_index(tx_log),
             timestamp=ts_sec_to_ms(transaction.timestamp),
@@ -501,9 +501,9 @@ class EVMTransactionDecoder():
             token: Optional[EvmToken],
             tx_log: EthereumTxReceiptLog,
             transaction: EvmTransaction,
-            decoded_events: List[HistoryBaseEntry],  # pylint: disable=unused-argument
+            decoded_events: List[CryptoHistoryBaseEntry],  # pylint: disable=unused-argument
             action_items: List[ActionItem],
-    ) -> Optional[HistoryBaseEntry]:
+    ) -> Optional[CryptoHistoryBaseEntry]:
         if tx_log.topics[0] != ERC20_OR_ERC721_TRANSFER:
             return None
 
@@ -577,9 +577,9 @@ class EVMTransactionDecoder():
             token: Optional[EvmToken],  # pylint: disable=unused-argument
             tx_log: EthereumTxReceiptLog,
             transaction: EvmTransaction,  # pylint: disable=unused-argument
-            decoded_events: List[HistoryBaseEntry],
+            decoded_events: List[CryptoHistoryBaseEntry],
             action_items: List[ActionItem],  # pylint: disable=unused-argument
-    ) -> Optional[HistoryBaseEntry]:
+    ) -> Optional[CryptoHistoryBaseEntry]:
         if tx_log.topics[0] == GTC_CLAIM and tx_log.address == '0xDE3e5a990bCE7fC60a6f017e7c4a95fc4939299E':  # noqa: E501
             for event in decoded_events:
                 if event.asset == A_GTC and event.event_type == HistoryEventType.RECEIVE:
@@ -612,7 +612,7 @@ class EVMTransactionDecoder():
             token: EvmToken,
             tx_log: EthereumTxReceiptLog,
             transaction: EvmTransaction,
-            event: HistoryBaseEntry,
+            event: CryptoHistoryBaseEntry,
             action_items: List[ActionItem],
     ) -> None:
         """
@@ -637,9 +637,9 @@ class EVMTransactionDecoder():
             token: Optional[EvmToken],  # pylint: disable=unused-argument
             tx_log: EthereumTxReceiptLog,
             transaction: EvmTransaction,
-            decoded_events: List[HistoryBaseEntry],  # pylint: disable=unused-argument
+            decoded_events: List[CryptoHistoryBaseEntry],  # pylint: disable=unused-argument
             action_items: List[ActionItem],  # pylint: disable=unused-argument
-    ) -> Optional[HistoryBaseEntry]:
+    ) -> Optional[CryptoHistoryBaseEntry]:
         if tx_log.topics[0] == GOVERNORALPHA_PROPOSE:
             if tx_log.address == '0xDbD27635A534A3d3169Ef0498beB56Fb9c937489':
                 governance_name = 'Gitcoin'
@@ -655,7 +655,7 @@ class EVMTransactionDecoder():
             proposal_id = decoded_data[0]
             proposal_text = decoded_data[8]
             notes = f'Create {governance_name} proposal {proposal_id}. {proposal_text}'
-            return HistoryBaseEntry(
+            return CryptoHistoryBaseEntry(
                 event_identifier=transaction.tx_hash,
                 sequence_index=self.base.get_sequence_index(tx_log),
                 timestamp=ts_sec_to_ms(transaction.timestamp),
