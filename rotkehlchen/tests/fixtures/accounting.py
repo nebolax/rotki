@@ -227,11 +227,13 @@ def create_inquirer(
         inquirer.find_usd_price = mock_find_usd_price  # type: ignore
     else:
         def mock_some_prices(from_asset, to_asset, ignore_cache=False):
+            from_asset = from_asset.resolve_to_asset_with_symbol()
             if from_asset.symbol in ignore_mocked_prices_for:
                 return inquirer.find_price_old(from_asset, to_asset, ignore_cache)
             return mock_find_price(from_asset, to_asset, ignore_cache)
 
         def mock_some_usd_prices(asset, ignore_cache=False):
+            asset = asset.resolve_to_asset_with_symbol()
             if asset.symbol in ignore_mocked_prices_for:
                 return inquirer.find_usd_price_old(asset, ignore_cache)
             return mock_find_usd_price(asset, ignore_cache)
