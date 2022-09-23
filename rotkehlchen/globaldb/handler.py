@@ -19,7 +19,6 @@ from typing import (
 
 from polyleven import levenshtein
 
-from rotkehlchen.assets.types import AssetData, AssetType
 from rotkehlchen.assets.asset import (
     Asset,
     AssetWithNameAndType,
@@ -221,7 +220,6 @@ class GlobalDBHandler():
             ) from e
 
     @staticmethod
-<<<<<<< HEAD
     def retrieve_assets(filter_query: 'AssetsFilterQuery') -> Tuple[Dict[str, dict], int]:
         """
         Returns a tuple that contains a dict of identifiers and their assets details
@@ -357,10 +355,9 @@ class GlobalDBHandler():
         """
         query = parent_query + query
         return query, bindings
-    def assets_with_coingecko_id() -> List[Asset]:
-=======
-    def assets_with_coingecko_icon() -> List[str]:
->>>>>>> Major changes are done. Now let's make it work.
+
+    @staticmethod
+    def assets_with_coingecko_id() -> List[str]:
         with GlobalDBHandler().conn.read_ctx() as cursor:
             cursor.execute(
                 'SELECT A.identifier from common_asset_details AS A JOIN '
