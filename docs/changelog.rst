@@ -9,6 +9,7 @@ Changelog
 * :bug:`5126` APR and APY for borrowing and lending in Aave should properly show again.
 * :bug:`5128` Ethereum transactions where no value was transferred will now be correctly decoded.
 * :bug:`-` Uniswap V3 oracle will now correctly skip assets with no liquidity when querying prices.
+* :bug:`-` Fix an edge-case problem with synchronizing database with the server.
 
 
 * :release:`1.26.1 <2022-11-04>`
